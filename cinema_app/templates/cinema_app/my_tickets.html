@@ -1,0 +1,285 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Vé của tôi{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Vé của tôi</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if bookings %}
+    <div class="row">
+        {% for booking in bookings %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm {% if not booking.is_paid %}border-warning border-2{% else %}border-0{% endif %}">
+                
+                <div class="card-header {% if booking.is_paid %}bg-primary text-white{% else %}bg-warning text-dark{% endif %} py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">{{ booking.showtime.movie.title }}</h5>
+                        {% if booking.is_paid %}
+                            <span class="badge bg-light text-primary">{{ booking.ticket_count }} vé</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">{{ booking.ticket_count }} vé</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="status-info mb-3">
+                        {% if booking.is_paid %}
+                            <div class="alert alert-success d-flex align-items-center py-2 mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Đã thanh toán</strong>
+                            </div>
+                        {% else %}
+                             <div class="alert alert-warning d-flex align-items-center py-2 mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Chờ thanh toán</strong>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div class="movie-info mb-3">
+                        {% if booking.showtime.movie.poster %}
+                        <div class="text-center mb-3">
+                            <img src="{{ booking.showtime.movie.poster.url }}" 
+                                 class="img-fluid rounded" 
+                                 style="max-height: 200px; object-fit: cover;" 
+                                 alt="{{ booking.showtime.movie.title }}">
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row small text-muted">
+                            <div class="col-6">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ booking.showtime.movie.duration }} phút
+                            </div>
+                            <div class="col-6 text-end">
+                                <i class="fas fa-user me-1"></i>
+                                {{ booking.showtime.movie.age_limit }}+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="showtime-info mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-calendar text-primary me-2"></i>
+                            <span class="fw-bold">{{ booking.showtime.start_time|date:'d/m/Y' }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-clock text-primary me-2"></i>
+                            <span class="fw-bold">{{ booking.showtime.start_time|date:'H:i' }}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-door-open text-primary me-2"></i>
+                            <span>{{ booking.showtime.room.name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="seats-info mb-3 p-3 bg-light rounded">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-chair text-success me-2"></i>
+                                <strong>Ghế:</strong>
+                            </div>
+                            <span class="badge bg-success fs-6">{{ booking.seats }}</span>
+                        </div>
+                    </div>
+
+                    <div class="booking-details">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Tổng giá:</span>
+                            <span class="fw-bold fs-5 text-primary">{{ booking.total_price|floatformat:0 }} đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Ngày đặt:</span>
+                            <small class="text-muted">{{ booking.booked_at|date:'d/m/Y H:i' }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-transparent border-top-0 pt-0">
+                    <div class="d-grid gap-2">
+                        <button class="btn {% if booking.is_paid %}btn-outline-primary{% else %}btn-outline-dark{% endif %}" 
+                                onclick="showBookingDetails(this)"
+                                data-movie="{{ booking.showtime.movie.title }}"
+                                data-date="{{ booking.showtime.start_time|date:'d/m/Y H:i' }}"
+                                data-room="{{ booking.showtime.room.name }}"
+                                data-seats="{{ booking.seats }}"
+                                data-price="{{ booking.total_price|floatformat:0 }}"
+                                data-booked="{{ booking.booked_at|date:'d/m/Y H:i' }}"
+                                data-count="{{ booking.ticket_count }}"
+                                data-status="{% if booking.is_paid %}Đã thanh toán{% else %}Chờ thanh toán{% endif %}">
+                            <i class="fas fa-info-circle me-2"></i>Chi tiết
+                        </button>
+                        
+                        {% if not booking.is_paid and booking.booking_code %}
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'retry_payment' booking.booking_code %}" class="btn btn-success w-100">
+                                    <i class="fas fa-credit-card me-2"></i>Thanh toán
+                                </a>
+                                
+                                <form action="{% url 'cancel_booking' booking.booking_code %}" method="POST" class="w-100"
+                                      onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng đang chờ thanh toán này?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger w-100">
+                                        <i class="fas fa-times me-2"></i>Hủy
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                        </div>
+                </div>
+                </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="empty-state">
+            <i class="fas fa-ticket-alt fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">Bạn chưa đặt vé nào</h4>
+            <p class="text-muted mb-4">Hãy khám phá các phim đang chiếu và đặt vé ngay!</p>
+            <a href="{% url 'movie_list' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-film me-2"></i>Xem phim đang chiếu
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="bookingDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Chi tiết vé</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12">
+                        
+                        <div class="info-item mb-3">
+                            <label class="fw-bold text-muted small">TRẠNG THÁI:</label>
+                            <p class="mb-0 fs-5 fw-bold" id="modal-status"></p>
+                        </div>
+                        <div class="info-item mb-3">
+                            <label class="fw-bold text-muted small">PHIM:</label>
+                            <p class="mb-0 fs-6" id="modal-movie"></p>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="fw-bold text-muted small">SUẤT CHIẾU:</label>
+                                <p class="mb-0 fs-6" id="modal-date"></p>
+                            </div>
+                            <div class="col-6">
+                                <label class="fw-bold text-muted small">PHÒNG:</label>
+                                <p class="mb-0 fs-6" id="modal-room"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="fw-bold text-muted small">SỐ LƯỢNG:</label>
+                                <p class="mb-0 fs-6" id="modal-count"></p>
+                            </div>
+                            <div class="col-6">
+                                <label class="fw-bold text-muted small">GHẾ:</label>
+                                <p class="mb-0 fs-6" id="modal-seats"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="info-item mb-3">
+                            <label class="fw-bold text-muted small">TỔNG GIÁ:</label>
+                            <p class="mb-0 fs-4 text-primary fw-bold" id="modal-price"></p>
+                        </div>
+                        
+                        <div class="info-item">
+                            <label class="fw-bold text-muted small">NGÀY ĐẶT:</label>
+                            <p class="mb-0 fs-6" id="modal-booked"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+.seats-info {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid #198754;
+}
+.empty-state {
+    max-width: 400px;
+    margin: 0 auto;
+}
+.info-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 12px;
+}
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.badge {
+    font-size: 0.8rem;
+    padding: 0.4em 0.6em;
+}
+</style>
+
+<script>
+function showBookingDetails(button) {
+    const movie = button.getAttribute('data-movie');
+    const date = button.getAttribute('data-date');
+    const room = button.getAttribute('data-room');
+    const seats = button.getAttribute('data-seats');
+    const price = button.getAttribute('data-price');
+    const booked = button.getAttribute('data-booked');
+    const count = button.getAttribute('data-count');
+    const status = button.getAttribute('data-status');
+    
+    document.getElementById('modal-movie').textContent = movie;
+    document.getElementById('modal-date').textContent = date;
+    document.getElementById('modal-room').textContent = room;
+    document.getElementById('modal-seats').textContent = seats;
+    document.getElementById('modal-price').textContent = price + ' đ';
+    document.getElementById('modal-booked').textContent = booked;
+    document.getElementById('modal-count').textContent = count + ' vé';
+    
+    const statusEl = document.getElementById('modal-status');
+    statusEl.textContent = status;
+    if (status === 'Đã thanh toán') {
+        statusEl.className = 'mb-0 fs-5 fw-bold text-success';
+    } else {
+        statusEl.className = 'mb-0 fs-5 fw-bold text-warning';
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('bookingDetailModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

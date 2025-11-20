@@ -1,0 +1,29 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Quản lý — Dashboard{% endblock %}
+{% block content %}
+<h2>Bảng điều khiển</h2>
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card text-bg-light"><div class="card-body">Phim: <b>{{ stats.movies }}</b></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-light"><div class="card-body">Phòng: <b>{{ stats.rooms }}</b></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-light"><div class="card-body">Suất chiếu: <b>{{ stats.showtimes }}</b></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-bg-light"><div class="card-body">Vé: <b>{{ stats.tickets }}</b></div></div>
+  </div>
+</div>
+<div class="card mt-3">
+  <div class="card-body">Tổng doanh thu: <b>{{ stats.revenue }}</b></div>
+</div>
+<div class="mt-3">
+  <a class="btn btn-outline-secondary" href="{% url 'manage_movies' %}">Quản lý phim</a>
+  <a class="btn btn-outline-secondary" href="{% url 'manage_rooms' %}">Quản lý phòng</a>
+  <a class="btn btn-outline-secondary" href="{% url 'manage_showtimes' %}">Quản lý suất chiếu</a>
+  <a class="btn btn-outline-secondary" href="{% url 'manage_promotions' %}">Khuyến mãi</a>
+  <a class="btn btn-outline-secondary" href="{% url 'manage_reports' %}">Báo cáo</a>
+</div>
+{% endblock %}

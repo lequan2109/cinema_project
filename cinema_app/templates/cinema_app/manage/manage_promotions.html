@@ -1,0 +1,130 @@
+{% extends 'cinema_app/base.html' %}
+{% load form_tags %}
+{% block title %}Quản lý khuyến mãi{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Quản lý khuyến mãi</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tags me-2"></i>
+                        {% if edit %}Sửa mã{% else %}Thêm mã mới{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" 
+                          action="{% if edit %}{% url 'manage_promotion_edit' editing.id %}{% else %}{% url 'manage_promotion_create' %}{% endif %}"
+                          onsubmit="return confirm('Bạn có chắc muốn lưu thay đổi này?');">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_code" class="form-label">Mã khuyến mãi *</label>
+                            {{ form.code|add_class:'form-control' }}
+                            {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_discount_percent" class="form-label">Giảm (%) *</label>
+                                    {{ form.discount_percent|add_class:'form-control' }}
+                                    {% if form.discount_percent.errors %}<div class="text-danger small">{{ form.discount_percent.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_valid_until" class="form-label">Hạn dùng *</label>
+                                    {{ form.valid_until|add_class:'form-control' }}
+                                    {% if form.valid_until.errors %}<div class="text-danger small">{{ form.valid_until.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            {{ form.is_active|add_class:'form-check-input' }}
+                            <label for="id_is_active" class="form-check-label">Đang kích hoạt</label>
+                            {% if form.is_active.errors %}<div class="text-danger small">{{ form.is_active.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if edit %}Cập nhật{% else %}Thêm mã{% endif %}
+                            </button>
+                            {% if edit %}
+                                <a href="{% url 'manage_promotions' %}" class="btn btn-secondary">Hủy</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Danh sách mã ({{ promotions|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Giảm (%)</th>
+                                    <th>Hạn dùng</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in promotions %}
+                                <tr>
+                                    <td><strong>{{ p.code }}</strong></td>
+                                    <td>{{ p.discount_percent }}%</td>
+                                    <td>{{ p.valid_until|date:'d/m/Y' }}</td>
+                                    <td>
+                                        {% if p.is_active %}
+                                            <span class="badge bg-success">Kích hoạt</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Đã tắt</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a class="btn btn-outline-primary" href="{% url 'manage_promotion_edit' p.id %}" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a class="btn btn-outline-danger" 
+                                               href="{% url 'manage_promotion_delete' p.id %}" 
+                                               onclick="return confirm('Bạn có chắc muốn xóa mã \"{{ p.code }}\"?');"
+                                               title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted">Chưa có mã khuyến mãi nào.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card { border: none; border-radius: 10px; }
+.table th { border-top: none; font-weight: 600; }
+/* Đảm bảo widget date hiển thị đúng */
+input[type="date"] { line-height: 1.5; }
+</style>
+{% endblock %}

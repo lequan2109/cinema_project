@@ -1,0 +1,116 @@
+{% extends 'cinema_app/base.html' %}
+{% load form_tags %}
+{% block title %}Quản lý phòng{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Quản lý phòng chiếu</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-door-open me-2"></i>
+                        {% if edit %}Sửa phòng{% else %}Thêm phòng mới{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" 
+                          action="{% if edit %}{% url 'manage_room_edit' editing.id %}{% else %}{% url 'manage_room_create' %}{% endif %}"
+                          onsubmit="return confirm('Bạn có chắc muốn lưu thay đổi này?');">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_name" class="form-label">Tên phòng *</label>
+                            {{ form.name|add_class:'form-control' }}
+                            {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_rows" class="form-label">Số hàng *</label>
+                                    {{ form.rows|add_class:'form-control' }}
+                                    {% if form.rows.errors %}<div class="text-danger small">{{ form.rows.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_cols" class="form-label">Số cột *</label>
+                                    {{ form.cols|add_class:'form-control' }}
+                                    {% if form.cols.errors %}<div class="text-danger small">{{ form.cols.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if edit %}Cập nhật{% else %}Thêm phòng{% endif %}
+                            </button>
+                            {% if edit %}
+                                <a href="{% url 'manage_rooms' %}" class="btn btn-secondary">Hủy</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Danh sách phòng ({{ rooms|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên</th>
+                                    <th>Số hàng</th>
+                                    <th>Số cột</th>
+                                    <th>Tổng ghế</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in rooms %}
+                                <tr>
+                                    <td><strong>{{ r.name }}</strong></td>
+                                    <td>{{ r.rows }}</td>
+                                    <td>{{ r.cols }}</td>
+                                    
+                                    <td>{{ r.total_seats }}</td> 
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a class="btn btn-outline-primary" href="{% url 'manage_room_edit' r.id %}" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a class="btn btn-outline-danger" 
+                                               href="{% url 'manage_room_delete' r.id %}" 
+                                               onclick="return confirm('Bạn có chắc muốn xóa phòng \"{{ r.name }}\"?');"
+                                               title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted">Chưa có phòng nào.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card { border: none; border-radius: 10px; }
+.table th { border-top: none; font-weight: 600; }
+</style>
+{% endblock %}

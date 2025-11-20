@@ -1,0 +1,28 @@
+{% load form_tags %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/">Cinema</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="/movies/">Phim</a></li>
+        <li class="nav-item"><a class="nav-link" href="/schedule/">Lịch chiếu</a></li>
+        {% if user|has_staff_role %}
+          <li class="nav-item"><a class="nav-link" href="/manage/">Quản lý</a></li>
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav">
+        {% if user.is_authenticated %}
+          <li class="nav-item"><a class="nav-link" href="/my-tickets/">Vé của tôi</a></li>
+          <li class="nav-item"><a class="nav-link" href="/account/">Tài khoản</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout/">Đăng xuất</a></li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="/login/">Đăng nhập</a></li>
+          <li class="nav-item"><a class="nav-link" href="/register/">Đăng ký</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

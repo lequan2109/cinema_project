@@ -1,0 +1,169 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Lịch chiếu{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">Lịch chiếu</h2>
+            <p class="text-muted">Xem lịch chiếu và đặt vé cho các phim đang có suất chiếu.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Chọn phim</label>
+                    <select class="form-select" name="movie">
+                        <option value="">Tất cả phim ({{ movies.count }})</option>
+                        {% for m in movies %}
+                        <option value="{{ m.id }}" {% if selected_movie|stringformat:'s' == m.id|stringformat:'s' %}selected{% endif %}>
+                            {{ m.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Chọn ngày</label>
+                    <input type="date" class="form-control" name="date" value="{{ selected_date }}">
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <div class="d-grid gap-2 d-md-flex">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="fas fa-filter me-2"></i>Lọc
+                        </button>
+                        <a href="{% url 'schedule' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-undo me-2"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if showtimes %}
+        {% regroup showtimes by movie as movie_list %}
+        
+        {% for movie_group in movie_list %}
+        <div class="card shadow-sm mb-4">
+            <div class="row g-0">
+                <div class="col-md-3">
+                    {% if movie_group.grouper.poster %}
+                        <img src="{{ movie_group.grouper.poster.url }}" 
+                             class="img-fluid rounded-start w-100" 
+                             alt="{{ movie_group.grouper.title }}"
+                             style="height: 100%; max-height: 400px; object-fit: cover;">
+                    {% else %}
+                        <div class="d-flex align-items-center justify-content-center bg-light rounded-start" style="height: 100%; min-height: 300px;">
+                            <i class="fas fa-film fa-4x text-muted"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-9">
+                    <div class="card-body p-4">
+                        <h3 class="card-title text-primary"><a href="{% url 'movie_detail' movie_group.grouper.id %}" class="text-decoration-none">{{ movie_group.grouper.title }}</a></h3>
+                        <p class="card-text text-muted mb-3">
+                            <span class="me-3"><i class="fas fa-tags me-1"></i>{{ movie_group.grouper.genre }}</span>
+                            <span class="me-3"><i class="fas fa-clock me-1"></i>{{ movie_group.grouper.duration }} phút</span>
+                            <span class="badge bg-danger fs-6"><i class="fas fa-user me-1"></i>{{ movie_group.grouper.age_limit }}+</span>
+                        </p>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">
+                            Suất chiếu (Ngày: {{ selected_date|date:'d/m/Y' }})
+                        </h5>
+                        
+                        {% regroup movie_group.list by room as room_list %}
+                        {% for room_group in room_list %}
+                            <div class="mb-3">
+                                <h6 class="text-success"><i class="fas fa-door-open me-2"></i>{{ room_group.grouper.name }}</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for st in room_group.list %}
+                                        <a href="{% url 'booking' st.id %}" class="btn btn-outline-primary showtime-button" 
+                                           title="Giá vé: {{ st.base_price|floatformat:0 }}đ">
+                                            <div class="fw-bold fs-5">{{ st.start_time|date:'H:i' }}</div>
+                                            <small class="showtime-price">{{ st.base_price|floatformat:0 }}đ</small>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    {% else %}
+    <div class="text-center py-5">
+        <div class="empty-state">
+            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">Không có suất chiếu</h4>
+            <p class="text-muted mb-4">
+                {% if selected_movie or selected_date %}
+                Không tìm thấy suất chiếu nào phù hợp với bộ lọc cho ngày {{ selected_date|date:'d/m/Y' }}.
+                {% else %}
+                Hiện không có suất chiếu nào. Vui lòng quay lại sau.
+                {% endif %}
+            </p>
+            {% if selected_movie or selected_date %}
+            <a href="{% url 'schedule' %}" class="btn btn-primary">
+                <i class="fas fa-undo me-2"></i>Reset bộ lọc
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.showtime-button {
+    min-width: 90px;
+    text-align: center;
+    border-radius: 8px;
+    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    padding: .5rem .75rem;
+}
+.showtime-button:hover {
+    transform: translateY(-2px);
+    background-color: var(--bs-primary);
+    color: white;
+}
+.showtime-price {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+.empty-state {
+    max-width: 400px;
+    margin: 0 auto;
+}
+@media (max-width: 767px) {
+    .card-body {
+        padding: 1.5rem !important;
+    }
+    .img-fluid {
+        height: 300px !important;
+        /* Áp dụng bo tròn góc trên bên trái và phải, bỏ bên dưới */
+        border-radius: 0.375rem 0.375rem 0 0 !important;
+    }
+}
+</style>
+
+<script>
+// Đặt ngày mặc định là hôm nay nếu không có ngày được chọn
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.querySelector('input[name="date"]');
+    // Nếu view không trả về ngày (ví dụ: /schedule/), thì mới set
+    if (!dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

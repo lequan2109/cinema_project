@@ -1,0 +1,11 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Tài khoản{% endblock %}
+{% block content %}
+<h2>Tài khoản</h2>
+<p><b>Username:</b> {{ request.user.username }}</p>
+<p><b>Email:</b> {{ request.user.email }}</p>
+{% if profile %}
+<p><b>Họ tên:</b> {{ profile.full_name }}</p>
+<p><b>Vai trò:</b> {{ profile.role }}</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,506 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Đặt vé - {{ showtime.movie.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'movie_detail' showtime.movie.id %}">{{ showtime.movie.title }}</a></li>
+                    <li class="breadcrumb-item active">Đặt vé</li>
+                </ol>
+            </nav>
+            
+            <h2 class="mb-3">Đặt vé: {{ showtime.movie.title }}</h2>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-3 text-muted">
+                        <span><i class="fas fa-calendar me-1"></i> {{ showtime.start_time|date:'d/m/Y' }}</span>
+                        <span><i class="fas fa-clock me-1"></i> {{ showtime.start_time|date:'H:i' }}</span>
+                        <span><i class="fas fa-door-open me-1"></i> {{ room.name }}</span>
+                        <span><i class="fas fa-tag me-1"></i> {{ showtime.base_price|floatformat:0 }} đ/vé</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chair me-2"></i>Chọn ghế
+                    </h5>
+                </div>
+                <div class="card-body">
+                    
+                    <div class="seat-legend mb-4 text-center">
+                        <div class="d-flex justify-content-center gap-4 flex-wrap">
+                            <div class="d-flex align-items-center">
+                                <div class="seat-example bg-success me-2"></div>
+                                <small>Ghế trống</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="seat-example bg-danger me-2"></div>
+                                <small>Đã đặt</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="seat-example bg-secondary me-2"></div>
+                                <small>Đang được giữ</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="seat-example bg-primary me-2"></div>
+                                <small>Bạn chọn</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="screen-container mb-4">
+                        <div class="screen text-center py-2 bg-dark text-white rounded">
+                            <i class="fas fa-film me-2"></i>MÀN HÌNH
+                        </div>
+                    </div>
+
+                    <div class="seat-grid mb-4">
+                        {% for row in grid %}
+                        <div class="seat-row d-flex justify-content-center align-items-center mb-2">
+                            <div class="row-label me-3 fw-bold text-primary" style="width: 30px;">{{ row.row_label }}</div>
+                            {% for seat in row.seats %}
+                                {% comment %}
+                                    Các trạng thái (status) từ views.py:
+                                    1. available (trống) -> btn-outline-success seat-actionable
+                                    2. taken (đã mua) -> btn-danger disabled
+                                    3. locked (người khác đang giữ) -> btn-secondary disabled seat-locked
+                                    4. selected (bạn đang giữ) -> btn-primary selected seat-actionable
+                                {% endcomment %}
+
+                                <button type="button" 
+                                        class="seat btn btn-sm m-1
+                                        {% if seat.status == 'available' %}
+                                            btn-outline-success seat-actionable
+                                        {% elif seat.status == 'taken' %}
+                                            btn-danger disabled
+                                        {% elif seat.status == 'locked' %}
+                                            btn-secondary disabled seat-locked
+                                        {% elif seat.status == 'selected' %}
+                                            btn-primary selected seat-actionable
+                                        {% endif %}"
+                                        data-seat="{{ seat.label }}"
+                                        {% if seat.status == 'taken' or seat.status == 'locked' %} disabled{% endif %}>
+                                    {{ seat.label }}
+                                    <span class="spinner-border spinner-border-sm seat-spinner" role="status" aria-hidden="true" style="display: none;"></span>
+                                </button>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="selected-seats-info">
+                        <h6>Ghế đã chọn: <span id="selected-seats-list" class="text-primary fw-bold">Chưa chọn ghế</span></h6>
+                    </div>
+                     <div id="api-error-alert" class="alert alert-danger mt-3" style="display: none;" role="alert">
+                        Lỗi API: <span id="api-error-message"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Thông tin suất chiếu
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if showtime.movie.poster %}
+                    <img src="{{ showtime.movie.poster.url }}" class="img-fluid w-100" style="height: 200px; object-fit: cover;" alt="{{ showtime.movie.title }}">
+                    {% endif %}
+                    
+                    <div class="p-3">
+                        <h5 class="card-title">{{ showtime.movie.title }}</h5>
+                         <div class="movie-details">
+                            <div class="row small">
+                                <div class="col-6">
+                                    <p><strong><i class="fas fa-clock me-1"></i> Thời lượng:</strong><br>{{ showtime.movie.duration }} phút</p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong><i class="fas fa-user me-1"></i> Giới hạn:</strong><br>{{ showtime.movie.age_limit }}+</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-ticket-alt me-2"></i>Đặt vé
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="booking-form" onsubmit="return confirm('Bạn có chắc chắn muốn đặt vé cho các ghế đã chọn?');">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Ghế đã chọn</label>
+                            <input type="text" class="form-control" id="seat-input" name="seats" 
+                                placeholder="Chọn ghế từ sơ đồ bên trái" required readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Mã khuyến mãi</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="promo_code" id="promo-input" 
+                                    placeholder="Chọn mã..." readonly>
+                                <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#promoModal">
+                                    <i class="fas fa-tags"></i> Chọn
+                                </button>
+                            </div>
+                            <div class="form-text text-success" id="promo-text"></div>
+                        </div>
+                        
+                        <div class="booking-summary mb-3 p-3 bg-light rounded">
+                            <h6 class="mb-2">Tóm tắt đơn hàng:</h6>
+                            <div class="d-flex justify-content-between small">
+                                <span>Số lượng ghế:</span>
+                                <span id="seat-count">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Đơn giá:</span>
+                                <span>{{ showtime.base_price|floatformat:0 }} đ</span>
+                            </div>
+                            <div class="d-flex justify-content-between small text-danger">
+                                <span>Giảm giá (<span id="discount-percent">0</span>%):</span>
+                                <span id="discount-amount">0 đ</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between fw-bold fs-5">
+                                <span>Tổng cộng:</span>
+                                <span id="total-price">0 đ</span>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg" id="submit-btn" disabled>
+                                <i class="fas fa-shopping-cart me-2"></i>Xác nhận đặt vé
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="promoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Chọn Mã Khuyến Mãi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Chọn một mã khuyến mãi còn hiệu lực để áp dụng.</p>
+                <div class="list-group">
+                    {% for promo in promotions %}
+                        {% if promo.is_active and promo.valid_until >= today %}
+                            <button type="button" 
+                                    class="list-group-item list-group-item-action promo-select-btn"
+                                    data-code="{{ promo.code }}"
+                                    data-percent="{{ promo.discount_percent }}">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1 text-primary">{{ promo.code }}</h5>
+                                    <small>Hạn: {{ promo.valid_until|date:"d/m/Y" }}</small>
+                                </div>
+                                <p class="mb-1">Giảm <strong>{{ promo.discount_percent }}%</strong> giá vé.</p>
+                                <small class="text-success">Có thể sử dụng</small>
+                            </button>
+                        {% else %}
+                            <button type="button" 
+                                    class="list-group-item list-group-item-action promo-select-btn disabled"
+                                    data-code="" data-percent="0" disabled>
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1 text-primary">{{ promo.code }}</h5>
+                                    <small>Hạn: {{ promo.valid_until|date:"d/m/Y" }}</small>
+                                </div>
+                                <p class="mb-1">Giảm <strong>{{ promo.discount_percent }}%</strong> giá vé.</p>
+                                <small class="text-danger">
+                                    {% if not promo.is_active %}Đã tắt{% else %}Đã hết hạn{% endif %}
+                                </small>
+                            </button>
+                        {% endif %}
+                    {% empty %}
+                        <p class="text-center text-muted">Không có mã khuyến mãi nào.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto promo-select-btn" data-code="" data-percent="0">
+                    Không dùng mã
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ showtime.base_price|json_script:"js-base-price" }}
+{{ showtime.id|json_script:"js-showtime-id" }}
+
+<style>
+.seat {
+    width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 500; transition: all 0.2s ease; border-radius: 6px;
+    position: relative; /* Dùng cho spinner */
+}
+@media (max-width: 768px) {
+    .seat { width: 38px; height: 38px; font-size: 0.7rem; }
+}
+/* Ghế trống hover */
+.seat-actionable.btn-outline-success:not(.selected):hover {
+    transform: scale(1.1); background-color: #198754; color: white;
+}
+.seat-example { width: 20px; height: 20px; border-radius: 4px; }
+.screen { max-width: 600px; margin: 0 auto; background: #333; }
+.seat-row { min-height: 50px; }
+.row-label { font-size: 0.9rem; }
+/* Ghế bạn đang chọn */
+.selected {
+    background-color: #0d6efd !important; border-color: #0d6efd !important;
+    color: white !important; transform: scale(1.05);
+}
+/* Ghế đang được giữ (khóa) */
+.seat-locked {
+    background-color: #6c757d !important; border-color: #6c757d !important;
+    color: white !important; cursor: not-allowed !important;
+}
+.booking-summary { border-left: 4px solid #198754; }
+.promo-select-btn.disabled { opacity: 0.6; background-color: #f8f9fa; }
+/* Spinner */
+.seat .seat-spinner {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+.seat.loading {
+    color: transparent !important; /* Ẩn text khi loading */
+}
+.seat.loading .seat-spinner {
+    display: inline-block !important;
+}
+</style>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Lấy các DOM Elements và Data ---
+    const seatInput = document.getElementById('seat-input');
+    const selectedSeatsList = document.getElementById('selected-seats-list');
+    const seatCount = document.getElementById('seat-count');
+    const totalPrice = document.getElementById('total-price');
+    const discountAmount = document.getElementById('discount-amount');
+    const discountPercentText = document.getElementById('discount-percent');
+    const promoInput = document.getElementById('promo-input');
+    const promoText = document.getElementById('promo-text');
+    const submitBtn = document.getElementById('submit-btn');
+    const apiErrorAlert = document.getElementById('api-error-alert');
+    const apiErrorMessage = document.getElementById('api-error-message');
+    
+    const basePrice = JSON.parse(document.getElementById('js-base-price').textContent);
+    const showtimeId = JSON.parse(document.getElementById('js-showtime-id').textContent);
+    const csrfToken = getCSRFToken(); // Hàm này từ base.html
+    
+    // --- Quản lý trạng thái ---
+    let selectedSeats = []; // Lưu các ghế đang được CHỌN (màu xanh dương)
+    let isSubmitting = false; // Cờ để tránh gọi API liên tục
+    let currentDiscountPercent = 0;
+
+    // --- Hàm gọi API (lock/release) ---
+    async function callSeatAPI(action, seatLabel) {
+        const url = (action === 'lock') ? '{% url "api_lock_seat" %}' : '{% url "api_release_seat" %}';
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    showtime_id: showtimeId,
+                    seat_label: seatLabel
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Lỗi ${response.status}`);
+            }
+            
+            return await response.json(); // Trả về { status: 'success/error/ignored', message: '...' }
+
+        } catch (error) {
+            console.error('API Error:', error);
+            showApiError(error.message);
+            return { status: 'error', message: error.message }; // Trả về lỗi để xử lý
+        }
+    }
+
+    // --- Hàm hiển thị lỗi API ---
+    function showApiError(message) {
+        apiErrorMessage.textContent = message;
+        apiErrorAlert.style.display = 'block';
+        // Tự ẩn sau 5 giây
+        setTimeout(() => { apiErrorAlert.style.display = 'none'; }, 5000);
+    }
+
+    // --- Xử lý click vào ghế ---
+    document.querySelectorAll('.seat-actionable').forEach(button => {
+        button.addEventListener('click', async function() {
+            if (isSubmitting) return; // Không làm gì nếu đang gọi API
+            
+            const seatLabel = this.getAttribute('data-seat');
+            const isCurrentlySelected = this.classList.contains('selected');
+            const action = isCurrentlySelected ? 'release' : 'lock';
+
+            // Hiển thị loading spinner
+            this.classList.add('loading');
+            this.disabled = true; // Vô hiệu hóa tạm thời
+            isSubmitting = true;
+            hideApiError(); // Ẩn lỗi cũ
+
+            const result = await callSeatAPI(action, seatLabel);
+
+            // Xử lý kết quả API
+            if (result.status === 'success') {
+                if (action === 'lock') {
+                    // Lock thành công -> Chuyển sang màu xanh (selected)
+                    this.classList.remove('btn-outline-success');
+                    this.classList.add('btn-primary', 'selected');
+                    selectedSeats.push(seatLabel);
+                } else {
+                    // Release thành công -> Chuyển về màu xanh lá (available)
+                    this.classList.remove('btn-primary', 'selected');
+                    this.classList.add('btn-outline-success');
+                    selectedSeats = selectedSeats.filter(seat => seat !== seatLabel);
+                }
+            } else if (result.status === 'error') {
+                // Lock thất bại (ghế bị người khác giữ) -> Chuyển sang màu xám (locked)
+                if (action === 'lock') {
+                    this.classList.remove('btn-outline-success');
+                    this.classList.add('btn-secondary', 'disabled', 'seat-locked');
+                    this.disabled = true; 
+                    showApiError(`Ghế ${seatLabel}: ${result.message}`);
+                } else {
+                     showApiError(`Không thể nhả ghế ${seatLabel}: ${result.message}`);
+                }
+            } 
+            // Nếu status là 'ignored' (nhả ghế không phải của mình), không làm gì cả
+
+            // Ẩn spinner và bật lại nút (nếu không bị locked)
+            this.classList.remove('loading');
+            if (!this.classList.contains('seat-locked')) {
+                 this.disabled = false;
+            }
+            isSubmitting = false;
+            updateBookingInfo(); // Cập nhật lại giá tiền và danh sách ghế
+        });
+    });
+    
+    // --- Xử lý chọn mã khuyến mãi (Giữ nguyên) ---
+    const promoModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('promoModal'));
+    document.querySelectorAll('.promo-select-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const code = this.getAttribute('data-code');
+            const percent = parseInt(this.getAttribute('data-percent'), 10);
+            currentDiscountPercent = percent;
+            promoInput.value = code;
+            promoText.textContent = (percent > 0) ? `Đã áp dụng mã, giảm ${percent}%.` : '';
+            updateBookingInfo();
+            promoModal.hide();
+        });
+    });
+
+    // --- Hàm cập nhật thông tin đơn hàng ---
+    function updateBookingInfo() {
+        const count = selectedSeats.length;
+        const subtotal = basePrice * count;
+        const discountValue = subtotal * (currentDiscountPercent / 100);
+        const finalTotal = subtotal - discountValue;
+        
+        seatInput.value = selectedSeats.sort().join(', '); // Sắp xếp ghế trước khi hiển thị
+        selectedSeatsList.textContent = selectedSeats.length > 0 ? selectedSeats.sort().join(', ') : 'Chưa chọn ghế';
+        
+        seatCount.textContent = count;
+        discountPercentText.textContent = currentDiscountPercent;
+        discountAmount.textContent = '-' + discountValue.toLocaleString('vi-VN') + ' đ';
+        totalPrice.textContent = finalTotal.toLocaleString('vi-VN') + ' đ';
+        
+        submitBtn.disabled = count === 0;
+    }
+
+    // --- Xử lý khi người dùng rời trang ---
+    // (Tự động nhả tất cả ghế đang giữ)
+    window.addEventListener('beforeunload', function (e) {
+        // Chỉ gửi request nếu có ghế đang chọn
+        if (selectedSeats.length > 0) {
+            // Dùng navigator.sendBeacon để đảm bảo request được gửi đi ngay cả khi tab đóng
+            const releaseUrl = '{% url "api_release_seat" %}';
+            const csrf = getCSRFToken();
+
+            selectedSeats.forEach(seatLabel => {
+                // sendBeacon không gửi header X-CSRFToken,
+                // nên chúng ta phải gửi nó qua form data hoặc trong body.
+                // Ở đây, ta dùng form data
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', csrf);
+                formData.append('showtime_id', showtimeId);
+                formData.append('seat_label', seatLabel);
+                
+                // Cách gửi body JSON (nhiều server không hỗ trợ)
+                // const data = JSON.stringify({ showtime_id: showtimeId, seat_label: seatLabel });
+                // const blob = new Blob([data], { type: 'application/json' });
+                // navigator.sendBeacon(releaseUrl, blob);
+                
+                // Gửi request đồng bộ (cách này cũ nhưng đáng tin cậy hơn sendBeacon)
+                // Dùng fetch với keepalive
+                fetch(releaseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        showtime_id: showtimeId,
+                        seat_label: seatLabel
+                    }),
+                    keepalive: true
+                });
+            });
+            // Xóa ngay lập tức để UI cập nhật (nếu người dùng hủy rời trang)
+            selectedSeats = [];
+            updateBookingInfo();
+        }
+        // Không cần `e.preventDefault()` hay `e.returnValue`
+    });
+
+    // --- Hàm ẩn thông báo lỗi API ---
+    function hideApiError() {
+        apiErrorAlert.style.display = 'none';
+        apiErrorMessage.textContent = '';
+    }
+
+    // --- Khởi tạo ---
+    // Load các ghế đã chọn từ trạng thái ban đầu (do server render)
+    document.querySelectorAll('.seat.selected').forEach(button => {
+        selectedSeats.push(button.getAttribute('data-seat'));
+    });
+    updateBookingInfo(); // Cập nhật lần đầu
+
+});
+</script>
+{% endblock %}

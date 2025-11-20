@@ -1,0 +1,119 @@
+{% extends 'cinema_app/base.html' %}
+{% load form_tags %}
+{% block title %}Quản lý suất chiếu{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Quản lý suất chiếu</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-plus me-2"></i>
+                        {% if edit %}Sửa suất chiếu{% else %}Thêm suất chiếu{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" 
+                          action="{% if edit %}{% url 'manage_showtime_edit' editing.id %}{% else %}{% url 'manage_showtime_create' %}{% endif %}"
+                          onsubmit="return confirm('Bạn có chắc muốn lưu thay đổi này?');">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_movie" class="form-label">Phim *</label>
+                            {{ form.movie|add_class:'form-select' }} 
+                            {% if form.movie.errors %}<div class="text-danger small">{{ form.movie.errors }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_room" class="form-label">Phòng *</label>
+                            {{ form.room|add_class:'form-select' }}
+                            {% if form.room.errors %}<div class="text-danger small">{{ form.room.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_start_time" class="form-label">Thời gian bắt đầu *</label>
+                            {{ form.start_time|add_class:'form-control' }}
+                            {% if form.start_time.errors %}<div class="text-danger small">{{ form.start_time.errors }}</div>{% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_base_price" class="form-label">Giá vé *</label>
+                            {{ form.base_price|add_class:'form-control' }}
+                            {% if form.base_price.errors %}<div class="text-danger small">{{ form.base_price.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if edit %}Cập nhật{% else %}Thêm suất chiếu{% endif %}
+                            </button>
+                            {% if edit %}
+                                <a href="{% url 'manage_showtimes' %}" class="btn btn-secondary">Hủy</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Danh sách suất chiếu ({{ showtimes|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Phim</th>
+                                    <th>Phòng</th>
+                                    <th>Thời gian</th>
+                                    <th>Giá vé</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in showtimes %}
+                                <tr>
+                                    <td>{{ s.movie.title }}</td>
+                                    <td>{{ s.room.name }}</td>
+                                    <td>{{ s.start_time|date:'d/m/Y H:i' }}</td>
+                                    <td>{{ s.base_price|floatformat:0 }} đ</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a class="btn btn-outline-primary" href="{% url 'manage_showtime_edit' s.id %}" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a class="btn btn-outline-danger" 
+                                               href="{% url 'manage_showtime_delete' s.id %}" 
+                                               onclick="return confirm('Bạn có chắc muốn xóa suất chiếu này?');"
+                                               title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted">Chưa có suất chiếu nào.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card { border: none; border-radius: 10px; }
+.table th { border-top: none; font-weight: 600; }
+/* Đảm bảo widget datetime-local hiển thị đúng */
+input[type="datetime-local"] { line-height: 1.5; }
+</style>
+{% endblock %}
