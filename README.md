@@ -1,94 +1,124 @@
-🎬 Cinema Pro - Hệ thống Đặt vé & Phân tích Dữ liệu Rạp chiếu phim
-Cinema Pro là một nền tảng quản lý rạp chiếu phim toàn diện được xây dựng bằng Django Framework. Hệ thống tích hợp quy trình đặt vé thời gian thực, thanh toán điện tử VNPAY và đặc biệt là Dashboard phân tích dữ liệu (Data Analytics) chuyên sâu dành cho quản trị viên.
+🎬 Cinema Pro – Hệ thống Đặt Vé & Phân Tích Dữ Liệu Rạp Chiếu Phim
 
-🌟 Tính năng Nổi bật
-1. Phân hệ Khách hàng (Customer)
-Giao diện thân thiện. 
+Cinema Pro là nền tảng quản lý rạp chiếu phim toàn diện được xây dựng bằng Django Framework.
+Hệ thống tích hợp quy trình đặt vé real-time, thanh toán điện tử VNPAY, và đặc biệt là Dashboard phân tích dữ liệu chuyên sâu dành cho quản trị viên.
 
-Đặt vé Real-time:
+🌟 1. Tính năng Nổi bật
+⭐ Phân hệ Khách hàng (Customer)
 
-Sơ đồ ghế trực quan.
+Giao diện thân thiện – tối ưu trải nghiệm người dùng
 
-Cơ chế giữ ghế (Locking): Ngăn chặn 2 người cùng chọn 1 ghế trong 10 phút để tránh trùng lặp.
+Đặt vé Real-time
 
-Thanh toán Online: Tích hợp cổng thanh toán VNPAY (Môi trường Sandbox/Test).
+Sơ đồ ghế trực quan
 
-Vé điện tử (E-Ticket): Nhận vé kèm mã QR qua Email ngay sau khi thanh toán thành công.
+Cơ chế giữ ghế (Seat Locking) trong 10 phút
+→ Ngăn người dùng trùng ghế
 
-Thành viên & Tích điểm: Tự động tích điểm khi mua vé và thăng hạng thành viên (Bạc, Vàng, Kim Cương).
+Thanh toán Online – Tích hợp VNPAY
 
-Đánh giá phim: Hệ thống cho phép người dùng chấm điểm và viết bình luận sau khi đã xem phim.
+Môi trường Sandbox/Test
 
-2. Phân hệ Quản trị (Admin/Staff)
-Dashboard Tổng quan: Theo dõi các chỉ số KPI: Doanh thu, Vé bán, Suất chiếu theo thời gian thực.
+Vé điện tử (E-Ticket)
 
-📊 Advanced Analytics (Phân tích nâng cao):
+Gửi email kèm QR Code sau khi thanh toán thành công
 
-Biểu đồ xu hướng: Theo dõi doanh thu theo ngày/tháng.
+Thành viên & Tích điểm
 
-Heatmap (Biểu đồ nhiệt): Phân tích khung giờ "vàng" đông khách nhất trong tuần để tối ưu lịch chiếu.
+Tự động tích điểm
 
-Phân tích hiệu suất: Top phim doanh thu cao, tỷ lệ lấp đầy phòng chiếu (Occupancy Rate).
+Thăng hạng: Bạc → Vàng → Kim Cương
 
-Bộ lọc: Lọc báo cáo theo khoảng thời gian tùy chỉnh.
+Đánh giá phim
 
-Quản lý Tài nguyên (CRUD):
+Chấm điểm & bình luận sau khi xem phim
 
-Quản lý Phim, Phòng chiếu (IMAX, 4DX, Standard...), Suất chiếu.
+⭐ Phân hệ Quản trị (Admin / Staff)
+📊 Dashboard Tổng quan
 
-Quản lý Mã giảm giá (Voucher).
+Theo dõi KPI theo thời gian thực:
 
-Quản lý Người dùng (Phân quyền Staff/Customer).
+Doanh thu
 
-🛠 Cài đặt và Chạy thử
-Dự án này đã bao gồm sẵn cơ sở dữ liệu mẫu (db.sqlite3) chứa hàng nghìn dữ liệu vé và phim để bạn có thể trải nghiệm các biểu đồ phân tích ngay lập tức mà không cần nhập liệu thủ công.
+Vé bán
 
-Yêu cầu tiên quyết
-Python 3.10 trở lên.
+Suất chiếu
 
-Git.
+🧠 Advanced Analytics (Phân tích nâng cao)
 
-Bước 1: Clone dự án về máy
-Mở Terminal (hoặc CMD/PowerShell) và chạy lệnh:
+Biểu đồ xu hướng doanh thu ngày / tháng
 
-bash
+Heatmap (Biểu đồ nhiệt) để phân tích khung giờ "vàng"
+
+Hiệu suất phòng chiếu:
+
+Tỷ lệ lấp đầy (Occupancy Rate)
+
+Top phim doanh thu cao nhất
+
+Bộ lọc thời gian tùy chỉnh
+
+🛠 Quản lý Tài nguyên (CRUD)
+
+Phim
+
+Phòng chiếu (IMAX, 4DX, Standard…)
+
+Suất chiếu
+
+Voucher
+
+Người dùng (Phân quyền Staff/Customer)
+
+🛠 2. Cài đặt & Chạy thử
+
+Dự án bao gồm sẵn db.sqlite3 chứa hàng nghìn dữ liệu mẫu
+→ Có thể trải nghiệm Dashboard ngay lập tức.
+
+📌 Yêu cầu tiên quyết
+
+Python 3.10+
+
+Git
+
+🚀 Bước 1: Clone dự án
 git clone https://github.com/lequan2109/cinema_project.git
 cd cinema_project
 
-
-
-Bước 2: Tạo môi trường ảo (Virtual Environment)
-Khuyến khích dùng môi trường ảo để không ảnh hưởng đến Python gốc của máy.
-
-Đối với Windows:
-
-bash
+🚀 Bước 2: Tạo môi trường ảo (Virtual Environment)
+Windows
 python -m venv venv
 venv\Scripts\activate
-Đối với macOS/Linux:
 
-bash
+macOS / Linux
 python3 -m venv venv
 source venv/bin/activate
 
-
-
-Bước 3: Cài đặt các thư viện phụ thuộc
-bash
+🚀 Bước 3: Cài đặt thư viện
 pip install -r requirements.txt
 
+🚀 Bước 4: Khởi chạy server
 
-Bước 4: Khởi chạy Server
-Dự án đã có sẵn file db.sqlite3, bạn không cần chạy migrations. Chỉ cần chạy server:
+Dự án có sẵn database → không cần chạy migrations
 
-bash
 python manage.py runserver
-Truy cập vào địa chỉ: http://127.0.0.1:8000/
 
-🔐 Tài khoản Demo (Có sẵn)
-Hệ thống đã có sẵn dữ liệu người dùng để bạn test các quyền hạn khác nhau:
 
-Vai trò	           Tài khoản	 Mật khẩu	       Chức năng trải nghiệm
-Quản trị (Staff)	staff	       123	           Xem Dashboard, Analytics, Quản lý phim/lịch chiếu/user
-Khách hàng	      customer	   123	           Đặt vé, Xem lịch sử vé, Đánh giá phim, Tích điểm
-Khách hàng 2	    user_001	   123	           Test tính năng giữ ghế (Locking)
+Truy cập:
+👉 http://127.0.0.1:8000/
+
+🔐 3. Tài khoản Demo (Test)
+Vai trò	          Tài khoản	    Mật khẩu	          Chức năng
+Quản trị (Staff)	staff	        123	                 Dashboard, Analytics, CRUD
+Khách hàng	      customer	    123	                 Đặt vé, lịch sử vé, đánh giá phim
+Khách hàng 2	    user_001	    123	                 Test tính năng giữ ghế
+📄 4. Góp ý – Đóng góp
+
+Rất hoan nghênh mọi ý tưởng và đóng góp để dự án hoàn thiện hơn.
+Nếu bạn muốn mở PR/issue, cứ thoải mái nhé!
+
+⭐ 5. Tác giả
+
+Lê Văn Quân
+Full-stack Developer – Data Analyst
+📧 Email: (thêm nếu muốn)
