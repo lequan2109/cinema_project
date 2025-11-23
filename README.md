@@ -54,6 +54,9 @@ Mở Terminal (hoặc CMD/PowerShell) và chạy lệnh:
 bash
 git clone https://github.com/lequan2109/cinema_project.git
 cd cinema_project
+
+
+
 Bước 2: Tạo môi trường ảo (Virtual Environment)
 Khuyến khích dùng môi trường ảo để không ảnh hưởng đến Python gốc của máy.
 
@@ -67,9 +70,14 @@ venv\Scripts\activate
 bash
 python3 -m venv venv
 source venv/bin/activate
+
+
+
 Bước 3: Cài đặt các thư viện phụ thuộc
 bash
 pip install -r requirements.txt
+
+
 Bước 4: Khởi chạy Server
 Dự án đã có sẵn file db.sqlite3, bạn không cần chạy migrations. Chỉ cần chạy server:
 
