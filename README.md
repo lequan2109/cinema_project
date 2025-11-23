@@ -118,10 +118,12 @@ Truy cập:
 
 🔐 3. Tài khoản Demo (Test)
 
-Vai trò	          Tài khoản	    Mật khẩu	          Chức năng
-Quản trị (Staff)	staff	        123	                 Dashboard, Analytics, CRUD
-Khách hàng	      customer	    123	                 Đặt vé, lịch sử vé, đánh giá phim
-Khách hàng 2	    user_001	    123	                 Test tính năng giữ ghế
+
+Vai trò	          Tài khoản	    Mật khẩu	      Chức năng trải nghiệm
+Quản trị (Staff)	staff	        123	            Xem Dashboard, Analytics, Quản lý phim/lịch chiếu/user
+Khách hàng	      customer	    123	            Đặt vé, Xem lịch sử vé, Đánh giá phim, Tích điểm
+Khách hàng 2	    user_001	    123	            Test tính năng giữ ghế (Locking)
+
 📄 4. Góp ý – Đóng góp
 
 Rất hoan nghênh mọi ý tưởng và đóng góp để dự án hoàn thiện hơn.
