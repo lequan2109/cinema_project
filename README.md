@@ -84,16 +84,20 @@ Git
 🚀 Bước 1: Clone dự án:
 
 git clone https://github.com/lequan2109/cinema_project.git
+
 cd cinema_project
 
 🚀 Bước 2: Tạo môi trường ảo (Virtual Environment):
 
 Windows
 python -m venv venv
+
 venv\Scripts\activate
 
 macOS / Linux
+
 python3 -m venv venv
+
 source venv/bin/activate
 
 🚀 Bước 3: Cài đặt thư viện:
@@ -109,9 +113,11 @@ python manage.py runserver
 
 
 Truy cập:
+
 👉 http://127.0.0.1:8000/
 
 🔐 3. Tài khoản Demo (Test)
+
 Vai trò	          Tài khoản	    Mật khẩu	          Chức năng
 Quản trị (Staff)	staff	        123	                 Dashboard, Analytics, CRUD
 Khách hàng	      customer	    123	                 Đặt vé, lịch sử vé, đánh giá phim
@@ -121,8 +127,4 @@ Khách hàng 2	    user_001	    123	                 Test tính năng giữ gh�
 Rất hoan nghênh mọi ý tưởng và đóng góp để dự án hoàn thiện hơn.
 Nếu bạn muốn mở PR/issue, cứ thoải mái nhé!
 
-⭐ 5. Tác giả
 
-Lê Văn Quân
-Full-stack Developer – Data Analyst
-📧 Email: (thêm nếu muốn)
