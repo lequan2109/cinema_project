@@ -81,11 +81,13 @@ Python 3.10+
 
 Git
 
-🚀 Bước 1: Clone dự án
+🚀 Bước 1: Clone dự án:
+
 git clone https://github.com/lequan2109/cinema_project.git
 cd cinema_project
 
-🚀 Bước 2: Tạo môi trường ảo (Virtual Environment)
+🚀 Bước 2: Tạo môi trường ảo (Virtual Environment):
+
 Windows
 python -m venv venv
 venv\Scripts\activate
@@ -94,10 +96,12 @@ macOS / Linux
 python3 -m venv venv
 source venv/bin/activate
 
-🚀 Bước 3: Cài đặt thư viện
+🚀 Bước 3: Cài đặt thư viện:
+
 pip install -r requirements.txt
 
-🚀 Bước 4: Khởi chạy server
+🚀 Bước 4: Khởi chạy server:
+
 
 Dự án có sẵn database → không cần chạy migrations
 
