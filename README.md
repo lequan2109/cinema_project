@@ -1,11 +1,6 @@
 🎬 Cinema Pro - Hệ thống Đặt vé & Phân tích Dữ liệu Rạp chiếu phim
 Cinema Pro là một nền tảng quản lý rạp chiếu phim toàn diện được xây dựng bằng Django Framework. Hệ thống tích hợp quy trình đặt vé thời gian thực, thanh toán điện tử VNPAY và đặc biệt là Dashboard phân tích dữ liệu (Data Analytics) chuyên sâu dành cho quản trị viên.
 
-https://img.shields.io/badge/Python-3.10-blue?style=flat&logo=python
-https://img.shields.io/badge/Django-4.2-green?style=flat&logo=django
-https://img.shields.io/badge/Bootstrap-5-purple?style=flat&logo=bootstrap
-https://img.shields.io/badge/Chart.js-Analytics-orange?style=flat
-
 🌟 Tính năng Nổi bật
 1. Phân hệ Khách hàng (Customer)
 Giao diện thân thiện. 
