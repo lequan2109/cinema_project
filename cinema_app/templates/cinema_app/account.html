@@ -1,11 +1,70 @@
 {% extends 'cinema_app/base.html' %}
 {% block title %}Tài khoản{% endblock %}
 {% block content %}
-<h2>Tài khoản</h2>
-<p><b>Username:</b> {{ request.user.username }}</p>
-<p><b>Email:</b> {{ request.user.email }}</p>
-{% if profile %}
-<p><b>Họ tên:</b> {{ profile.full_name }}</p>
-<p><b>Vai trò:</b> {{ profile.role }}</p>
-{% endif %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-id-card me-2"></i>Hồ sơ cá nhân</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted fw-bold">Tài khoản:</div>
+                        <div class="col-sm-8 fw-bold text-dark">{{ request.user.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted fw-bold">Email:</div>
+                        <div class="col-sm-8 text-dark">{{ request.user.email }}</div>
+                    </div>
+                    
+                    {% if profile %}
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted fw-bold">Họ tên:</div>
+                        <div class="col-sm-8 text-dark">{{ profile.full_name|default:"Chưa cập nhật" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4 text-muted fw-bold">Vai trò:</div>
+                        <div class="col-sm-8">
+                            {% if profile.role == 'STAFF' %}
+                                <span class="badge bg-danger">Nhân viên</span>
+                            {% else %}
+                                <span class="badge bg-primary">Khách hàng</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="text-muted">
+                    
+                    <div class="bg-light p-3 rounded border">
+                        <h6 class="text-warning mb-3 fw-bold"><i class="fas fa-crown me-2"></i>Thành viên thân thiết</h6>
+                        <div class="row align-items-center">
+                            <div class="col-sm-4 text-muted fw-bold">Hạng:</div>
+                            <div class="col-sm-8 mb-2">
+                                {% if profile.membership_level == 'DIAMOND' %}
+                                    <span class="badge bg-info text-dark px-3 py-2 border"><i class="fas fa-gem me-1"></i> KIM CƯƠNG</span>
+                                {% elif profile.membership_level == 'GOLD' %}
+                                    <span class="badge bg-warning text-dark px-3 py-2 border"><i class="fas fa-medal me-1"></i> VÀNG</span>
+                                {% else %}
+                                    <span class="badge bg-secondary px-3 py-2"><i class="fas fa-medal me-1"></i> BẠC</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-sm-4 text-muted fw-bold">Điểm tích lũy:</div>
+                            <div class="col-sm-8">
+                                <span class="fs-4 fw-bold text-success">{{ profile.points }}</span> <small class="text-muted">điểm</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white border-top text-end">
+                     <a href="{% url 'my_tickets' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-history me-1"></i> Lịch sử vé
+                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

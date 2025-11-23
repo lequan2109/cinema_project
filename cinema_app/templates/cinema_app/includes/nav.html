@@ -1,26 +1,58 @@
 {% load form_tags %}
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container">
-    <a class="navbar-brand" href="/">Cinema</a>
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark shadow-sm border-bottom border-secondary">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-bold text-danger" href="{% url 'home' %}">
+      <i class="fas fa-film me-2"></i>Cinema Pro
+    </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
+    
     <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/movies/">Phim</a></li>
-        <li class="nav-item"><a class="nav-link" href="/schedule/">Lịch chiếu</a></li>
+      <ul class="navbar-nav me-auto align-items-center">
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'movie_list' %}">Phim</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'schedule' %}">Lịch chiếu</a>
+        </li>
+        
         {% if user|has_staff_role %}
-          <li class="nav-item"><a class="nav-link" href="/manage/">Quản lý</a></li>
+          <li class="nav-item border-start border-secondary mx-3 h-50 d-none d-xl-block" style="height: 24px;"></li>
+          
+          <li class="nav-item">
+            <a class="nav-link text-warning fw-bold" href="{% url 'manage_dashboard' %}" title="Bảng điều khiển">
+              <i class="fas fa-tachometer-alt me-1"></i>Quản lí 
+            </a>
+          </li>
+     
+        
+          </li>
+          
+          
         {% endif %}
       </ul>
+
       <ul class="navbar-nav">
         {% if user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="/my-tickets/">Vé của tôi</a></li>
-          <li class="nav-item"><a class="nav-link" href="/account/">Tài khoản</a></li>
-          <li class="nav-item"><a class="nav-link" href="/logout/">Đăng xuất</a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'my_tickets' %}">
+              <i class="fas fa-ticket-alt me-1"></i>Vé của tôi
+            </a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="fas fa-user-circle me-1"></i>{{ user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow">
+              <li><a class="dropdown-item" href="{% url 'account' %}">Tài khoản</a></li>
+              <li><hr class="dropdown-divider border-secondary"></li>
+              <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Đăng xuất</a></li>
+            </ul>
+          </li>
         {% else %}
-          <li class="nav-item"><a class="nav-link" href="/login/">Đăng nhập</a></li>
-          <li class="nav-item"><a class="nav-link" href="/register/">Đăng ký</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Đăng nhập</a></li>
+          <li class="nav-item"><a class="btn btn-danger btn-sm ms-2 px-3 rounded-pill fw-bold" href="{% url 'register' %}">Đăng ký</a></li>
         {% endif %}
       </ul>
     </div>

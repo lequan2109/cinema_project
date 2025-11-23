@@ -3,7 +3,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
-# THÊM IMPORT NÀY
 from datetime import timedelta
 
 class Profile(models.Model):
@@ -11,13 +10,34 @@ class Profile(models.Model):
         ('CUSTOMER', 'Customer'),
         ('STAFF', 'Staff'),
     )
+    # Thêm hạng thành viên
+    MEMBERSHIP_CHOICES = (
+        ('SILVER', 'Bạc'),
+        ('GOLD', 'Vàng'),
+        ('DIAMOND', 'Kim Cương'),
+    )
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER')
+    
+    # *** MỚI: Tích điểm & Hạng ***
+    points = models.PositiveIntegerField(default=0)
+    membership_level = models.CharField(max_length=20, choices=MEMBERSHIP_CHOICES, default='SILVER')
 
     def __str__(self):
         return self.user.username
+
+    # Hàm cập nhật hạng dựa trên điểm
+    def update_membership(self):
+        if self.points >= 10000: # Ví dụ: 10.000 điểm = Kim Cương
+            self.membership_level = 'DIAMOND'
+        elif self.points >= 4000: # 4.000 điểm = Vàng
+            self.membership_level = 'GOLD'
+        else:
+            self.membership_level = 'SILVER'
+        self.save()
 
 class Movie(models.Model):
     title = models.CharField(max_length=255)
@@ -32,6 +52,22 @@ class Movie(models.Model):
     def __str__(self):
         return self.title
 
+# *** MỚI: Model Đánh Giá Phim ***
+class Review(models.Model):
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        # Một người chỉ đánh giá 1 phim 1 lần
+        unique_together = ('movie', 'user') 
+
+    def __str__(self):
+        return f"{self.user.username} - {self.movie.title} ({self.rating}*)"
+
 class CinemaRoom(models.Model):
     name = models.CharField(max_length=100)
     rows = models.PositiveIntegerField(default=8, validators=[MinValueValidator(1)])
@@ -40,7 +76,6 @@ class CinemaRoom(models.Model):
     def __str__(self):
         return f"{self.name} ({self.rows}x{self.cols})"
 
-    # Thêm property để sửa lỗi 'multiply' ở manage_rooms
     @property
     def total_seats(self):
         return self.rows * self.cols
@@ -57,7 +92,6 @@ class ShowTime(models.Model):
     def __str__(self):
         return f"{self.movie.title} - {self.room.name} - {self.start_time}"
 
-    # Thêm property để tính giờ kết thúc (sửa lỗi schedule.html)
     @property
     def end_time(self):
         try:
@@ -74,21 +108,14 @@ class Promotion(models.Model):
     def __str__(self):
         return f"{self.code} (-{self.discount_percent}%)"
 
-# *** BẮT ĐẦU SỬA `Ticket` MODEL ***
 class Ticket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     showtime = models.ForeignKey(ShowTime, on_delete=models.CASCADE, related_name='tickets')
-    
-    # THÊM TRƯỜNG NÀY
     booking_code = models.CharField(max_length=100, db_index=True, null=True, blank=True)
-    
     seat_row = models.CharField(max_length=2)
     seat_number = models.PositiveIntegerField()
     price_paid = models.DecimalField(max_digits=10, decimal_places=2)
-    
-    # SỬA DÒNG NÀY
     is_paid = models.BooleanField(default=False) 
-    
     booked_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -100,4 +127,3 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.showtime} - {self.seat_label()}"
-# *** KẾT THÚC SỬA `Ticket` MODEL ***

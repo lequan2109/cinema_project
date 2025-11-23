@@ -10,18 +10,14 @@ urlpatterns = [
     path('schedule/', views.schedule_view, name='schedule'),
     path('schedule/<int:showtime_id>/booking/', views.booking_view, name='booking'),
     
-    # --- THÊM URL NÀY ---
     path('booking/payment-return/', views.payment_return_view, name='payment_return'),
     path('booking/cancel/<str:booking_code>/', views.cancel_booking_view, name='cancel_booking'),
     path('booking/retry/<str:booking_code>/', views.retry_payment_view, name='retry_payment'),
-    # --- KẾT THÚC THÊM ---
 
     path('my-tickets/', views.my_tickets, name='my_tickets'),
 
-    # --- THÊM 2 DÒNG NÀY CHO API GIỮ GHẾ ---
     path('api/lock-seat/', views.lock_seat, name='api_lock_seat'),
     path('api/release-seat/', views.release_seat, name='api_release_seat'),
-    # --- KẾT THÚC THÊM ---
 
     # Auth
     path('login/', views.login_view, name='login'),
@@ -29,23 +25,42 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('account/', views.account_view, name='account'),
 
-    # Management UI
+    # Manage
     path('manage/', views.manage_dashboard, name='manage_dashboard'),
+    
+    # --- THÊM DÒNG NÀY ---
+    path('manage/analytics/', views.manage_analytics, name='manage_analytics'),
+    # ---------------------
+
     path('manage/movies/', views.manage_movies, name='manage_movies'),
     path('manage/movies/create/', views.manage_movie_create, name='manage_movie_create'),
     path('manage/movies/<int:pk>/edit/', views.manage_movie_edit, name='manage_movie_edit'),
     path('manage/movies/<int:pk>/delete/', views.manage_movie_delete, name='manage_movie_delete'),
+    
     path('manage/rooms/', views.manage_rooms, name='manage_rooms'),
     path('manage/rooms/create/', views.manage_room_create, name='manage_room_create'),
     path('manage/rooms/<int:pk>/edit/', views.manage_room_edit, name='manage_room_edit'),
     path('manage/rooms/<int:pk>/delete/', views.manage_room_delete, name='manage_room_delete'),
+    
     path('manage/showtimes/', views.manage_showtimes, name='manage_showtimes'),
     path('manage/showtimes/create/', views.manage_showtime_create, name='manage_showtime_create'),
     path('manage/showtimes/<int:pk>/edit/', views.manage_showtime_edit, name='manage_showtime_edit'),
     path('manage/showtimes/<int:pk>/delete/', views.manage_showtime_delete, name='manage_showtime_delete'),
+    
     path('manage/promotions/', views.manage_promotions, name='manage_promotions'),
     path('manage/promotions/create/', views.manage_promotion_create, name='manage_promotion_create'),
     path('manage/promotions/<int:pk>/edit/', views.manage_promotion_edit, name='manage_promotion_edit'),
     path('manage/promotions/<int:pk>/delete/', views.manage_promotion_delete, name='manage_promotion_delete'),
+    
     path('manage/reports/', views.manage_reports, name='manage_reports'),
+
+    # ... (Các đường dẫn cũ giữ nguyên)
+    
+    # --- QUẢN LÝ NGƯỜI DÙNG (MỚI) ---
+    path('manage/users/', views.manage_users, name='manage_users'),
+    path('manage/users/create/', views.manage_user_create, name='manage_user_create'),
+    path('manage/users/<int:pk>/edit/', views.manage_user_edit, name='manage_user_edit'),
+    path('manage/users/<int:pk>/delete/', views.manage_user_delete, name='manage_user_delete'),
+    # --------------------------------
+
 ]

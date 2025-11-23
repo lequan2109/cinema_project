@@ -87,9 +87,22 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 
 # *** THÊM CẤU HÌNH VNPAY VỚI MÃ CỦA BẠN TỪ ẢNH ***
-VNPAY_TMN_CODE = 'GS2RMNYQ' # Mã TmnCode của bạn
-VNPAY_HASH_SECRET = '22JIHTIJBOBMOGT4X3BK7QPOW4KX39EG' # Chuỗi bí mật của bạn
+VNPAY_TMN_CODE = 'WDTRYU8H' # Mã TmnCode của bạn
+VNPAY_HASH_SECRET = 'V6XDPRKAJ9QNTEAQTRSLAC1WI07E2F2U' # Chuỗi bí mật của bạn
 VNPAY_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'
 VNPAY_API_URL = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'
 VNPAY_RETURN_URL = '/booking/payment-return/' 
 # *** KẾT THÚC CẤU HÌNH VNPAY ***
+# ... (các cấu hình cũ giữ nguyên)
+
+# *** CẤU HÌNH EMAIL (E-TICKET) ***
+# Chế độ DEV: In email ra màn hình console (Terminal) thay vì gửi thật
+# cinema_project/settings.py
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'lequan21092004@gmail.com'
+EMAIL_HOST_PASSWORD = 'qcpiysieyaptsyio'  # Đã xóa khoảng trắng, viết liền mạch
+DEFAULT_FROM_EMAIL = 'Cinema System <lequan21092004@gmail.com>'

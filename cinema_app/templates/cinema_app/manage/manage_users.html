@@ -1,0 +1,147 @@
+{% extends 'cinema_app/base.html' %}
+{% load form_tags %}
+{% block title %}Quản lý người dùng{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4 fw-bold text-dark">Quản lý người dùng</h2>
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user-edit me-2"></i>
+                        {% if edit %}Sửa người dùng{% else %}Thêm người dùng mới{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body bg-white">
+                    <form method="post" 
+                          action="{% if edit %}{% url 'manage_user_edit' editing.id %}{% else %}{% url 'manage_user_create' %}{% endif %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Tài khoản *</label>
+                            {{ form.username|add_class:'form-control' }}
+                            {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Email *</label>
+                            {{ form.email|add_class:'form-control' }}
+                            {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Mật khẩu {% if edit %}<span class="fw-normal text-muted">(Để trống nếu không đổi)</span>{% endif %}</label>
+                            {{ form.password|add_class:'form-control' }}
+                            {% if form.password.errors %}<div class="text-danger small mt-1">{{ form.password.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Họ tên</label>
+                            {{ form.full_name|add_class:'form-control' }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Số điện thoại</label>
+                            {{ form.phone|add_class:'form-control' }}
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-secondary small">Vai trò</label>
+                                {{ form.role|add_class:'form-select' }}
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.is_active|add_class:'form-check-input' }}
+                                    <label class="form-check-label text-dark ms-2">Kích hoạt</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary fw-bold">
+                                <i class="fas fa-save me-2"></i>
+                                {% if edit %}Cập nhật{% else %}Thêm mới{% endif %}
+                            </button>
+                            {% if edit %}
+                                <a href="{% url 'manage_users' %}" class="btn btn-outline-secondary">Hủy / Quay lại thêm mới</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 text-success">
+                        <i class="fas fa-users me-2"></i>
+                        Danh sách ({{ users.count }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tài khoản</th>
+                                    <th>Họ tên</th>
+                                    <th>Vai trò</th>
+                                    <th>Trạng thái</th>
+                                    <th class="text-end">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for u in users %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ u.username }}</div>
+                                        <div class="small text-muted">{{ u.email }}</div>
+                                    </td>
+                                    <td class="text-secondary">{{ u.profile.full_name|default:"-" }}</td>
+                                    <td>
+                                        {% if u.profile.role == 'STAFF' %}
+                                            <span class="badge bg-danger">Nhân viên</span>
+                                        {% else %}
+                                            <span class="badge bg-primary">Khách hàng</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if u.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Locked</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'manage_user_edit' u.id %}" class="btn btn-outline-primary" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if not u.is_superuser and u != request.user %}
+                                            <a href="{% url 'manage_user_delete' u.id %}" 
+                                               class="btn btn-outline-danger" 
+                                               onclick="return confirm('CẢNH BÁO: Bạn có chắc muốn xóa user {{ u.username }}? Hành động này không thể hoàn tác!');"
+                                               title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                            {% else %}
+                                            <button class="btn btn-outline-secondary" disabled title="Không thể xóa"><i class="fas fa-trash"></i></button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted py-4">Chưa có người dùng nào.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

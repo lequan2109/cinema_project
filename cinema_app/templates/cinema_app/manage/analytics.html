@@ -1,0 +1,247 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Phân tích dữ liệu{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>Advanced Analytics Dashboard</h2>
+            <p class="text-muted mb-0">Phân tích hiệu suất kinh doanh & hành vi khách hàng</p>
+        </div>
+        <form class="d-flex gap-2 bg-white p-2 rounded shadow-sm" method="get">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light fw-bold">Từ</span>
+                <input type="date" class="form-control" name="start_date" value="{{ kpis.start_date }}">
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light fw-bold">Đến</span>
+                <input type="date" class="form-control" name="end_date" value="{{ kpis.end_date }}">
+            </div>
+            <button class="btn btn-primary btn-sm fw-bold" type="submit">
+                <i class="fas fa-filter me-1"></i> Lọc
+            </button>
+        </form>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                <div class="card-body position-relative">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-uppercase fw-bold text-muted small mb-1">Doanh thu</p>
+                            <h3 class="fw-bold text-success mb-0">{{ kpis.revenue|floatformat:0 }} đ</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-2 rounded">
+                            <i class="fas fa-dollar-sign text-success fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-uppercase fw-bold text-muted small mb-1">Vé bán ra</p>
+                            <h3 class="fw-bold text-primary mb-0">{{ kpis.tickets }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-2 rounded">
+                            <i class="fas fa-ticket-alt text-primary fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-uppercase fw-bold text-muted small mb-1">Giá TB/Vé</p>
+                            <h3 class="fw-bold text-info mb-0">{{ kpis.avg_price|floatformat:0 }} đ</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-2 rounded">
+                            <i class="fas fa-tags text-info fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-uppercase fw-bold text-muted small mb-1">Tỷ lệ lấp đầy</p>
+                            <h3 class="fw-bold text-warning mb-0">{{ kpis.occupancy }}%</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-2 rounded">
+                            <i class="fas fa-percent text-warning fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-area me-2 text-primary"></i>Xu hướng doanh thu</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-pie me-2 text-info"></i>Tỷ trọng vé theo phòng</h6>
+                </div>
+                <div class="card-body position-relative">
+                    <canvas id="roomChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-trophy me-2 text-warning"></i>Top 5 Phim Doanh Thu Cao Nhất</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="movieChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-fire me-2 text-danger"></i>Khung Giờ "Vàng" (Heatmap)</h6>
+                    <small class="text-muted">Đậm hơn = Đông khách hơn</small>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-center small mb-0 heatmap-table" style="font-size: 0.7rem;">
+                            <thead>
+                                <tr>
+                                    <th class="bg-light"></th>
+                                    {% for h in hours_label %}
+                                    <th class="bg-light">{{ h }}h</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in heatmap %}
+                                <tr>
+                                    <th class="bg-light align-middle">
+                                        {% if forloop.counter0 == 0 %}Th 2
+                                        {% elif forloop.counter0 == 1 %}Th 3
+                                        {% elif forloop.counter0 == 2 %}Th 4
+                                        {% elif forloop.counter0 == 3 %}Th 5
+                                        {% elif forloop.counter0 == 4 %}Th 6
+                                        {% elif forloop.counter0 == 5 %}Th 7
+                                        {% else %}CN
+                                        {% endif %}
+                                    </th>
+                                    {% for cell in row %}
+                                    {% with opacity=cell|floatformat:2 max_val=max_val|default:1 %}
+                                    <td style="background-color: rgba(220, 53, 69, {{ opacity }}); color: {% if cell > max_val|add:'-5' %}white{% else %}black{% endif %};" 
+                                        title="{{ cell }} vé">
+                                        {% if cell > 0 %}{{ cell }}{% endif %}
+                                    </td>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // --- DATA FROM DJANGO VIEW ---
+    const lineData = JSON.parse('{{ line_chart|safe }}');
+    const barData = JSON.parse('{{ bar_chart|safe }}');
+    const pieData = JSON.parse('{{ pie_chart|safe }}');
+
+    // --- CHART 1: REVENUE LINE CHART ---
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: lineData.labels,
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: lineData.data,
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // --- CHART 2: TOP MOVIES BAR CHART ---
+    new Chart(document.getElementById('movieChart'), {
+        type: 'bar',
+        data: {
+            labels: barData.labels,
+            datasets: [{
+                label: 'Doanh thu',
+                data: barData.data,
+                backgroundColor: [
+                    '#ffc107', '#0dcaf0', '#fd7e14', '#20c997', '#6610f2'
+                ],
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Horizontal Bar
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // --- CHART 3: ROOM PIE CHART ---
+    new Chart(document.getElementById('roomChart'), {
+        type: 'doughnut',
+        data: {
+            labels: pieData.labels,
+            datasets: [{
+                data: pieData.data,
+                backgroundColor: ['#0d6efd', '#dc3545', '#6c757d'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+</script>
+
+<style>
+    .card { transition: transform 0.2s; }
+    .card:hover { transform: translateY(-2px); }
+    .heatmap-table th, .heatmap-table td { width: 30px; height: 30px; padding: 0; vertical-align: middle; }
+</style>
+{% endblock %}
