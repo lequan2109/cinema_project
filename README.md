@@ -118,11 +118,31 @@ Truy cập:
 
 🔐 3. Tài khoản Demo (Test)
 
+🔐 Tài khoản Demo (Có sẵn)
 
-Vai trò	          Tài khoản	    Mật khẩu	      Chức năng trải nghiệm
-Quản trị (Staff)	staff	        123	            Xem Dashboard, Analytics, Quản lý phim/lịch chiếu/user
-Khách hàng	      customer	    123	            Đặt vé, Xem lịch sử vé, Đánh giá phim, Tích điểm
-Khách hàng 2	    user_001	    123	            Test tính năng giữ ghế (Locking)
+1. Quản trị (Staff)
+
+Tài khoản: staff
+
+Mật khẩu: 123
+
+Chức năng: Xem Dashboard, Analytics, Quản lý phim, lịch chiếu và người dùng.
+
+2. Khách hàng
+
+Tài khoản: customer
+
+Mật khẩu: 123
+
+Chức năng: Đặt vé, xem lịch sử vé, đánh giá phim, tích điểm.
+
+3. Khách hàng 2
+
+Tài khoản: user_001
+
+Mật khẩu: 123
+
+Chức năng: Test tính năng giữ ghế (Seat Locking).
 
 📄 4. Góp ý – Đóng góp
 
