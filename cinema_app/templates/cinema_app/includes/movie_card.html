@@ -1,0 +1,53 @@
+<div class="col">
+    <div class="card h-100 shadow-sm movie-card border-0 bg-transparent">
+        <div class="position-relative overflow-hidden rounded-3">
+            {% if movie.poster %}
+            <img src="{{ movie.poster.url }}" class="card-img-top" alt="{{ movie.title }}">
+            {% else %}
+            <div class="bg-secondary d-flex align-items-center justify-content-center text-white" style="height: 320px;">
+                <i class="fas fa-film fa-3x"></i>
+            </div>
+            {% endif %}
+            
+            <div class="movie-overlay d-flex align-items-center justify-content-center">
+                {% if status == "SẮP CHIẾU" %}
+                <a href="{% url 'movie_detail' movie.id %}" class="btn btn-outline-light rounded-pill px-4 fw-bold shadow stretched-link transform-scale">
+                    <i class="fas fa-info-circle me-1"></i> Chi tiết
+                </a>
+                {% else %}
+                <a href="{% url 'movie_detail' movie.id %}" class="btn btn-danger rounded-pill px-4 fw-bold shadow stretched-link transform-scale">
+                    <i class="fas fa-ticket-alt me-1"></i> Đặt Vé
+                </a>
+                {% endif %}
+            </div>
+            
+            {% if status %}
+            <div class="position-absolute top-0 start-0 m-2">
+                <span class="badge bg-{{ status_color|default:'primary' }} shadow-sm">{{ status }}</span>
+            </div>
+            {% endif %}
+
+            <div class="position-absolute top-0 end-0 m-2">
+                <span class="badge bg-dark bg-opacity-75 border border-secondary">T{{ movie.age_limit }}</span>
+            </div>
+        </div>
+        
+        <div class="card-body px-0 pt-3">
+            <h6 class="card-title text-truncate fw-bold text-white mb-1" title="{{ movie.title }}">
+                {{ movie.title }}
+            </h6>
+            <p class="card-text small text-secondary mb-0 text-truncate">{{ movie.genre }}</p>
+            <div class="d-flex justify-content-between align-items-center small text-muted mt-2">
+                <span><i class="fas fa-clock me-1"></i>{{ movie.duration }}'</span>
+                <span class="text-warning">
+                    <i class="fas fa-star me-1"></i>
+                    {% if movie.reviews.exists %}
+                        {{ movie.reviews.count }}
+                    {% else %}
+                        New
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>

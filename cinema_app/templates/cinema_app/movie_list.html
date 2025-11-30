@@ -1,97 +1,204 @@
 {% extends 'cinema_app/base.html' %}
 {% block title %}Danh sách phim{% endblock %}
 {% block content %}
-<div class="container">
-    <h2 class="mb-3">Danh sách phim</h2>
-    <form class="row g-2 mb-4">
-        <div class="col-auto flex-grow-1">
-            <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="Tìm tên phim...">
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-outline-primary" type="submit">
-                <i class="fas fa-search me-1"></i> Tìm
-            </button>
-        </div>
-    </form>
 
-    <h3 class="mb-3 border-bottom pb-2">
-        <i class="fas fa-play-circle me-2 text-primary"></i> Phim Đang Chiếu
-    </h3>
-    <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
-        {% for m in now_showing_movies %}
-        <div class="col">
-            <div class="card h-100 shadow-sm movie-card">
-                {% if m.poster %}
-                <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}" />
-                {% endif %}
-                <div class="card-body d-flex flex-column">
-                    <h6 class="card-title text-truncate" title="{{ m.title }}">{{ m.title }}</h6>
-                    <p class="card-text small text-muted flex-grow-1">
-                        {{ m.genre }} • {{ m.duration }} phút
-                    </p>
-                    <a href="{% url 'movie_detail' m.id %}" class="btn btn-primary w-100">Xem chi tiết</a>
-                </div>
+<div class="container mb-5" id="search-section">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="search-container">
+                <form method="GET" action="{% url 'movie_list' %}#search-section" class="search-form">
+                    <div class="search-card p-3 rounded-4 shadow-lg border-0">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="search-filter">
+                                <select name="genre" class="form-select border-0 bg-light fw-bold text-dark" 
+                                        style="width: 180px; cursor: pointer;" 
+                                        onchange="this.form.submit()">
+                                    <option value="">Tất cả thể loại</option>
+                                    {% for g in genres %}
+                                    <option value="{{ g }}" {% if selected_genre == g %}selected{% endif %}>{{ g }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="search-input-container flex-grow-1 position-relative">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-0 text-muted">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" name="q" class="form-control border-0 shadow-none bg-transparent" 
+                                           placeholder="Tìm tên phim, diễn viên..." 
+                                           value="{{ request.GET.q|default:'' }}"
+                                           id="searchInput">
+                                </div>
+                                <div class="search-underline"></div>
+                            </div>
+
+                            <button class="btn btn-danger rounded-pill px-4 fw-bold search-btn" type="submit">
+                                Tìm
+                            </button>
+
+                            {% if request.GET.q or request.GET.genre %}
+                            <a href="{% url 'movie_list' %}" class="btn btn-outline-secondary rounded-circle p-2" title="Xóa bộ lọc">
+                                <i class="fas fa-times"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
-        {% empty %}
-        <div class="col-12">
-            <p class="text-muted">{% if q %}Không tìm thấy phim đang chiếu nào với từ khóa '{{ q }}'.{% else %}Hiện chưa có phim đang chiếu.{% endif %}</p>
-        </div>
-        {% endfor %}
-    </div>
-
-    <h3 class="mt-5 mb-3 border-bottom pb-2">
-        <i class="fas fa-calendar-alt me-2 text-secondary"></i> Phim Sắp Chiếu
-    </h3>
-    <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
-        {% for m in coming_soon_movies %}
-        <div class="col">
-            <div class="card h-100 shadow-sm movie-card">
-                {% if m.poster %}
-                <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}" />
-                {% endif %}
-                <div class="card-body d-flex flex-column">
-                    <h6 class="card-title text-truncate" title="{{ m.title }}">{{ m.title }}</h6>
-                    <p class="card-text small text-muted flex-grow-1">
-                        {{ m.genre }} • {{ m.duration }} phút
-                    </p>
-                    <p class="card-text small">
-                        Khởi chiếu: <strong>{{ m.release_date|date:'d/m/Y' }}</strong>
-                    </p>
-                    <a href="{% url 'movie_detail' m.id %}" class="btn btn-outline-secondary w-100">Xem chi tiết</a>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <p class="text-muted">{% if q %}Không tìm thấy phim sắp chiếu nào với từ khóa '{{ q }}'.{% else %}Hiện chưa có phim sắp chiếu.{% endif %}</p>
-        </div>
-        {% endfor %}
     </div>
 </div>
 
+{% if request.GET.q or request.GET.genre %}
+<div class="container mb-4 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2">
+        <h4 class="  mb-0">
+            <i class="fas fa-filter me-2 text-warning"></i>
+            Kết quả lọc: 
+            {% if request.GET.genre %}<span class="text-warning">{{ request.GET.genre }}</span>{% endif %}
+            {% if request.GET.q %} - "<span class=" ">{{ request.GET.q }}</span>"{% endif %}
+        </h4>
+        <span class="badge bg-secondary">{{ now_showing_movies.count|add:coming_soon_movies.count }} phim</span>
+    </div>
+</div>
+{% endif %}
+
+<div class="container mb-5">
+    
+    <h3 class="mb-4 pb-2 border-bottom border-secondary   fw-bold text-uppercase">
+        <i class="fas fa-play-circle me-2 text-danger"></i> Phim Đang Chiếu
+    </h3>
+    
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4 mb-5">
+        {% for m in now_showing_movies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm movie-card border-0 bg-transparent">
+                <div class="position-relative overflow-hidden rounded-3">
+                    {% if m.poster %}
+                        <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">
+                    {% else %}
+                        <div class="bg-secondary d-flex align-items-center justify-content-center  " style="height: 320px;">
+                            <i class="fas fa-film fa-3x"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="movie-overlay d-flex align-items-center justify-content-center">
+                        <a href="{% url 'movie_detail' m.id %}" class="btn btn-danger rounded-pill px-4 fw-bold shadow stretched-link transform-scale">
+                            <i class="fas fa-ticket-alt me-1"></i> Đặt Vé
+                        </a>
+                    </div>
+                    
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-dark bg-opacity-75 border border-secondary">T{{ m.age_limit }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-body px-0 pt-3">
+                    <h6 class="card-title text-truncate fw-bold   mb-1" title="{{ m.title }}">{{ m.title }}</h6>
+                    <p class="card-text small text-secondary mb-0">{{ m.genre }}</p>
+                    <div class="d-flex justify-content-between align-items-center small text-muted mt-2">
+                        <span><i class="fas fa-clock me-1"></i>{{ m.duration }}'</span>
+                        <span class="text-warning"><i class="fas fa-star me-1"></i>{{ m.reviews.count|default:"New" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 py-4">
+            <p class="text-muted fst-italic">Không tìm thấy phim đang chiếu nào phù hợp.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if coming_soon_movies %}
+    <h3 class="mb-4 pb-2 border-bottom border-secondary   mt-5 fw-bold text-uppercase">
+        <i class="fas fa-calendar-alt me-2 text-warning"></i> Phim Sắp Chiếu
+    </h3>
+    
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4">
+        {% for m in coming_soon_movies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm movie-card border-0 bg-transparent">
+                <div class="position-relative overflow-hidden rounded-3">
+                    {% if m.poster %}
+                        <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">
+                    {% else %}
+                        <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 320px;">
+                            <i class="fas fa-film fa-3x  -50"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="position-absolute top-0 start-0 bg-warning text-dark px-3 py-1 fw-bold rounded-bottom-end shadow-sm">
+                        {{ m.release_date|date:'d/m' }}
+                    </div>
+                    <div class="movie-overlay d-flex align-items-center justify-content-center">
+                        <a href="{% url 'movie_detail' m.id %}" class="btn btn-outline-light rounded-pill px-4 fw-bold stretched-link">Chi Tiết</a>
+                    </div>
+                </div>
+                
+                <div class="card-body px-0 pt-3">
+                    <h6 class="card-title text-truncate fw-bold   mb-1" title="{{ m.title }}">{{ m.title }}</h6>
+                    <p class="card-text small text-secondary mb-0">{{ m.genre }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not now_showing_movies and not coming_soon_movies %}
+    <div class="text-center py-5 text-muted">
+        <i class="fas fa-search fa-4x mb-3 opacity-25"></i>
+        <p class="fs-5">Rất tiếc, không tìm thấy phim nào phù hợp với từ khóa hoặc thể loại bạn chọn.</p>
+        <a href="{% url 'movie_list' %}" class="btn btn-outline-primary mt-3">Xem tất cả phim</a>
+    </div>
+    {% endif %}
+</div>
+
 <style>
-.movie-card img {
-    height: 300px;
-    object-fit: cover;
-}
-.movie-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.movie-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
-}
-.card-title {
-    font-size: 1rem;
-    font-weight: 600;
-}
-/* Đảm bảo các thẻ có chiều cao đồng đều */
-.card-body {
-    min-height: 180px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+/* --- THANH TÌM KIẾM --- */
+.search-container { position: relative; z-index: 100; }
+.search-card { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important; transition: all 0.3s ease; }
+.search-card:hover { box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15) !important; transform: translateY(-2px); }
+.search-filter .form-select { border-radius: 12px !important; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
+.search-filter .form-select:focus { box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15); border-color: #0d6efd; }
+.search-input-container { position: relative; }
+.search-input-container .input-group { background: rgba(255, 255, 255, 0.8); border-radius: 12px; padding: 0.5rem 0; transition: all 0.3s ease; }
+.search-input-container .input-group:focus-within { background: white; box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1); }
+.search-input-container .form-control { background: transparent !important; font-size: 1.05rem; padding: 0.25rem 0.5rem; border: none !important; box-shadow: none !important; }
+.search-input-container .form-control::placeholder { color: #6c757d; opacity: 0.8; }
+.search-input-container .input-group-text { padding: 0.5rem 1rem; color: #6c757d; }
+.search-underline { position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: linear-gradient(90deg, #0d6efd, #6f42c1); transition: all 0.3s ease; transform: translateX(-50%); }
+.search-input-container:focus-within .search-underline { width: 100%; }
+.search-btn { background: linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%); border: none; box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3); transition: all 0.3s ease; padding: 0.75rem 1.5rem; }
+.search-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(13, 110, 253, 0.4); }
+.animate-fade-in { animation: fadeInUp 0.5s ease-out; }
+
+/* --- CARD PHIM --- */
+.movie-card { transition: transform 0.3s ease, opacity 0.3s ease; }
+.movie-card img { height: 320px; object-fit: cover; transition: transform 0.5s ease; }
+.movie-card:hover { transform: translateY(-8px); z-index: 10; }
+.movie-card:hover img { transform: scale(1.08); }
+.movie-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(2px); }
+.movie-card:hover .movie-overlay { opacity: 1; }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tự động focus vào ô tìm kiếm khi có kết quả
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && searchInput.value) {
+        searchInput.focus();
+        const results = document.querySelector('.search-results');
+        if(results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+});
+</script>
+
 {% endblock %}

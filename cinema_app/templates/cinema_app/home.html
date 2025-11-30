@@ -2,13 +2,145 @@
 {% block title %}Trang chủ — Cinema{% endblock %}
 {% block content %}
 
+<div class="container mb-5" id="search-section">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="search-container">
+                <form method="GET" action="{% url 'home' %}#search-section" class="search-form">
+                    <div class="search-card p-3 rounded-4 shadow-lg border-0">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="search-filter">
+                                <select name="genre" class="form-select border-0 bg-light fw-bold text-dark" 
+                                        style="width: 180px; cursor: pointer;" 
+                                        onchange="this.form.submit()">
+                                    <option value="">Tất cả thể loại</option>
+                                    {% for g in genres %}
+                                    <option value="{{ g }}" {% if selected_genre == g %}selected{% endif %}>{{ g }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="search-input-container flex-grow-1 position-relative">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-0 text-muted">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" name="q" class="form-control border-0 shadow-none bg-transparent" 
+                                           placeholder="Tìm tên phim, diễn viên..." 
+                                           value="{{ request.GET.q|default:'' }}"
+                                           id="searchInput">
+                                </div>
+                                <div class="search-underline"></div>
+                            </div>
+
+                            <button class="btn btn-primary rounded-pill px-4 fw-bold search-btn" type="submit">
+                                Tìm
+                            </button>
+
+                            {% if request.GET.q or request.GET.genre %}
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-circle p-2" title="Xóa bộ lọc">
+                                <i class="fas fa-times"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if request.GET.q or request.GET.genre %}
+
+<div class="container mb-5 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
+        <h4 class="text-white mb-0">
+            <i class="fas fa-filter me-2 text-warning"></i>
+            Kết quả: 
+            {% if request.GET.genre %}<span class="text-warning">{{ request.GET.genre }}</span>{% endif %}
+            {% if request.GET.q %} - "<span class="text-white">{{ request.GET.q }}</span>"{% endif %}
+        </h4>
+        <a href="{% url 'home' %}" class="btn btn-sm btn-outline-secondary">Xóa bộ lọc</a>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
+        {% for m in now_showing_movies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm movie-card border-0">
+                <div class="position-relative overflow-hidden rounded-top">
+                    {% if m.poster %}
+                    <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">
+                    {% else %}
+                    <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 350px;">
+                        <i class="fas fa-film fa-3x"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-danger">ĐANG CHIẾU</span>
+                    </div>
+                    
+                    <div class="movie-overlay d-flex align-items-center justify-content-center">
+                        <a href="{% url 'movie_detail' m.id %}" class="btn btn-light btn-sm rounded-pill px-3 fw-bold stretched-link">
+                            <i class="fas fa-eye me-1"></i> Xem ngay
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
+                    <p class="card-text small text-muted mb-1">{{ m.genre }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="fas fa-clock me-1"></i>{{ m.duration }}'</small>
+                        <span class="badge bg-light text-dark border">T{{ m.age_limit }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for m in coming_soon_movies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm movie-card border-0">
+                <div class="position-relative overflow-hidden rounded-top">
+                    {% if m.poster %}
+                    <img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">
+                    {% endif %}
+                    
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-warning text-dark">SẮP CHIẾU</span>
+                    </div>
+                    
+                    <div class="movie-overlay d-flex align-items-center justify-content-center">
+                        <a href="{% url 'movie_detail' m.id %}" class="btn btn-light btn-sm rounded-pill px-3 fw-bold stretched-link">
+                            <i class="fas fa-eye me-1"></i> Chi tiết
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
+                    <p class="card-text small text-muted mb-1">{{ m.genre }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not now_showing_movies and not coming_soon_movies %}
+    <div class="alert alert-warning d-flex align-items-center mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle me-2 fs-4"></i>
+        <div>
+            Không tìm thấy phim nào phù hợp với bộ lọc của bạn.
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
 <div id="heroCarousel" class="carousel slide carousel-fade mb-5 shadow-lg rounded overflow-hidden" data-bs-ride="carousel" data-bs-interval="5000" data-bs-pause="hover">
-    
     <div class="carousel-indicators">
         {% for m in now_showing_movies %}
         <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ forloop.counter0 }}" 
-                class="{% if forloop.first %}active{% endif %}" aria-current="true"
-                aria-label="Slide {{ forloop.counter }}"></button>
+                class="{% if forloop.first %}active{% endif %}" aria-current="true"></button>
         {% endfor %}
     </div>
 
@@ -25,34 +157,24 @@
 
             <div class="carousel-content container h-100 d-flex align-items-center justify-content-center">
                 <div class="row w-100 align-items-center justify-content-center">
-                    <!-- ẢNH POSTER LỚN HƠN -->
                     <div class="col-md-5 col-lg-4 text-center d-none d-md-block">
                         {% if m.poster %}
                         <img src="{{ m.poster.url }}" class="img-fluid rounded-3 shadow border border-3 border-white poster-highlight" alt="{{ m.title }}" style="max-height: 500px; width: auto;">
-                        {% else %}
-                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center rounded-3 shadow border border-3 border-white poster-highlight" style="height: 500px; width: 350px;">
-                            <i class="fas fa-film fa-4x"></i>
-                        </div>
                         {% endif %}
                     </div>
                     
-                    <!-- NỘI DUNG VĂN BẢN -->
                     <div class="col-md-7 col-lg-8 text-white text-center text-md-start">
                         <span class="badge bg-danger mb-3 shadow-sm px-4 py-2 fs-6">ĐANG CHIẾU</span>
                         <h1 class="fw-bold display-3 text-uppercase text-shadow mb-4">{{ m.title }}</h1>
-                        
                         <p class="lead text-shadow mb-4 fs-5">
                             <span class="fw-bold text-warning">{{ m.genre }}</span>
                             <span class="mx-3 text-white-50">•</span> 
                             <i class="fas fa-clock me-2"></i>{{ m.duration }} phút
-                            <span class="mx-3 text-white-50">•</span>
-                            <span class="badge bg-light text-dark fs-6">T{{ m.age_limit }}</span>
+                            <span class="badge bg-light text-dark fs-6 ms-3">T{{ m.age_limit }}</span>
                         </p>
-                        
                         <p class="d-none d-lg-block text-white-50 fst-italic mb-5 fs-6 lh-base" style="max-width: 95%;">
                             {{ m.description|truncatewords:40 }}
                         </p>
-                        
                         <div class="d-flex gap-4 justify-content-center justify-content-md-start">
                             {% with first_show=m.showtime_set.first %}
                                 {% if first_show %}
@@ -60,12 +182,9 @@
                                     <i class="fas fa-ticket-alt me-2"></i>ĐẶT VÉ NGAY
                                 </a>
                                 {% else %}
-                                <button class="btn btn-secondary btn-lg shadow-sm px-5 py-3 rounded-pill fw-bold" disabled>
-                                    CHƯA CÓ LỊCH
-                                </button>
+                                <button class="btn btn-secondary btn-lg shadow-sm px-5 py-3 rounded-pill fw-bold" disabled>CHƯA CÓ LỊCH</button>
                                 {% endif %}
                             {% endwith %}
-                            
                             <a href="{% url 'movie_detail' m.id %}" class="btn btn-outline-light btn-lg shadow-sm px-5 py-3 rounded-pill fw-bold">
                                 <i class="fas fa-info-circle me-2"></i>CHI TIẾT
                             </a>
@@ -77,313 +196,133 @@
         {% empty %}
         <div class="carousel-item active" style="height: 400px; background-color: #222;">
             <div class="d-flex align-items-center justify-content-center h-100 text-white">
-                <h3 class="display-5">Hiện chưa có phim đang chiếu.</h3>
+                <h3>Hiện chưa có phim đang chiếu.</h3>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- NÚT ĐIỀU HƯỚNG ĐƯỢC CẢI THIỆN -->
     <button class="carousel-control-prev custom-nav-btn" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Trước</span>
     </button>
     <button class="carousel-control-next custom-nav-btn" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
         <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Sau</span>
     </button>
 </div>
 
-<ul class="nav nav-tabs mb-4" id="homeTab" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#now-showing-pane"><i class="fas fa-play-circle me-1"></i> Phim Đang Chiếu</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#coming-soon-pane"><i class="fas fa-calendar-alt me-1"></i> Phim Sắp Chiếu</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#schedule-pane"><i class="fas fa-clock me-1"></i> Suất Chiếu Sắp Tới</button></li>
-</ul>
+<div class="container mb-5">
+    <ul class="nav nav-tabs mb-4" id="homeTab" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#now-showing-pane"><i class="fas fa-play-circle me-1"></i> Phim Đang Chiếu</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#coming-soon-pane"><i class="fas fa-calendar-alt me-1"></i> Phim Sắp Chiếu</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#schedule-pane"><i class="fas fa-clock me-1"></i> Suất Chiếu Sắp Tới</button></li>
+    </ul>
 
-<div class="tab-content" id="homeTabContent">
-    <div class="tab-pane fade show active" id="now-showing-pane">
-        <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
-            {% for m in now_showing_movies %}
-            <div class="col">
-                <div class="card h-100 shadow-sm movie-card border-0">
-                    <div class="position-relative overflow-hidden rounded-top">
-                        {% if m.poster %}<img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">{% endif %}
-                        <div class="movie-overlay d-flex align-items-center justify-content-center">
-                            <a href="{% url 'movie_detail' m.id %}" class="btn btn-light btn-sm rounded-pill px-3 fw-bold stretched-link"><i class="fas fa-eye me-1"></i> Xem ngay</a>
+    <div class="tab-content" id="homeTabContent">
+        <div class="tab-pane fade show active" id="now-showing-pane">
+            <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
+                {% for m in now_showing_movies %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm movie-card border-0">
+                        <div class="position-relative overflow-hidden rounded-top">
+                            {% if m.poster %}<img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">{% endif %}
+                            <div class="movie-overlay d-flex align-items-center justify-content-center">
+                                <a href="{% url 'movie_detail' m.id %}" class="btn btn-light btn-sm rounded-pill px-3 fw-bold stretched-link"><i class="fas fa-eye me-1"></i> Xem ngay</a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
+                            <p class="card-text small text-muted">{{ m.genre }}</p>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
-                        <p class="card-text small text-muted">{{ m.genre }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="coming-soon-pane">
+            <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
+                {% for m in coming_soon_movies %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm movie-card border-0">
+                        <div class="position-relative overflow-hidden rounded-top">
+                            {% if m.poster %}<img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">{% endif %}
+                            <div class="position-absolute top-0 start-0 bg-warning text-dark px-2 py-1 small fw-bold">{{ m.release_date|date:'d/m' }}</div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
+                            <a href="{% url 'movie_detail' m.id %}" class="btn btn-outline-secondary btn-sm w-100 mt-2 stretched-link">Chi tiết</a>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
-    </div>
 
-    <div class="tab-pane fade" id="coming-soon-pane">
-        <div class="row row-cols-1 row-cols-md-4 row-cols-lg-5 g-4">
-            {% for m in coming_soon_movies %}
-            <div class="col">
-                <div class="card h-100 shadow-sm movie-card border-0">
-                    <div class="position-relative overflow-hidden rounded-top">
-                        {% if m.poster %}<img src="{{ m.poster.url }}" class="card-img-top" alt="{{ m.title }}">{% endif %}
-                        <div class="position-absolute top-0 start-0 bg-warning text-dark px-2 py-1 small fw-bold">{{ m.release_date|date:'d/m' }}</div>
-                    </div>
-                    <div class="card-body">
-                        <h6 class="card-title text-truncate fw-bold">{{ m.title }}</h6>
-                        <a href="{% url 'movie_detail' m.id %}" class="btn btn-outline-secondary btn-sm w-100 mt-2 stretched-link">Chi tiết</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+        <div class="tab-pane fade" id="schedule-pane">
+             <div class="list-group">
+                {% for st in upcoming_showtimes %}
+                    <a href="{% url 'booking' st.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <h5 class="mb-1 fw-bold">{{ st.movie.title }}</h5>
+                            <small class="text-muted">{{ st.start_time|date:'H:i - d/m/Y' }} | {{ st.room.name }}</small>
+                        </div>
+                        <span class="btn btn-primary btn-sm rounded-pill px-3">Đặt vé</span>
+                    </a>
+                {% endfor %}
+             </div>
         </div>
-    </div>
-
-    <div class="tab-pane fade" id="schedule-pane">
-         <div class="list-group">
-            {% for st in upcoming_showtimes %}
-                <a href="{% url 'booking' st.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
-                    <div>
-                        <h5 class="mb-1 fw-bold">{{ st.movie.title }}</h5>
-                        <small class="text-muted">{{ st.start_time|date:'H:i - d/m/Y' }} | {{ st.room.name }}</small>
-                    </div>
-                    <span class="btn btn-primary btn-sm rounded-pill px-3">Đặt vé</span>
-                </a>
-            {% endfor %}
-         </div>
     </div>
 </div>
+{% endif %}
 
 <style>
-/* --- HIỆU ỨNG CHUYỂN CẢNH MƯỢT MÀ --- */
-.carousel-fade .carousel-item {
-    opacity: 0;
-    transition: opacity 1.2s ease-in-out;
-    transform: none !important;
-}
-
-.carousel-fade .carousel-item.active {
-    opacity: 1;
-}
-
-.carousel-fade .carousel-item-next.carousel-item-left,
-.carousel-fade .carousel-item-prev.carousel-item-right {
-    opacity: 1;
-}
-
-.carousel-fade .active.carousel-item-left,
-.carousel-fade .active.carousel-item-right {
-    opacity: 0;
-}
-
-/* Hiệu ứng cho background khi chuyển slide */
-.carousel-bg {
-    transition: transform 1.5s ease-in-out, filter 1.5s ease-in-out;
-}
-
-.carousel-item.active .carousel-bg {
-    transform: scale(1.05) translateZ(0);
-    filter: blur(15px) brightness(0.6);
-}
-
-.carousel-item:not(.active) .carousel-bg {
-    transform: scale(1.1) translateZ(0);
-    filter: blur(25px) brightness(0.5);
-}
-
-/* --- KÍCH THƯỚC CAROUSEL LỚN HƠN --- */
-.carousel-item {
-    background-color: #000;
-    height: 650px !important;
-}
-
-.carousel-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    transform: scale(1.1);
-    z-index: 1;
-}
-
-.carousel-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        rgba(0, 0, 0, 0.8) 0%,
-        rgba(0, 0, 0, 0.6) 30%,
-        rgba(0, 0, 0, 0.4) 50%,
-        rgba(0, 0, 0, 0.2) 70%,
-        rgba(0, 0, 0, 0) 100%
-    );
-    z-index: 2;
-}
-
-.carousel-content {
-    position: relative;
-    z-index: 3;
-}
-
-/* --- POSTER LỚN HƠN VÀ ĐẸP HƠN --- */
-.poster-highlight {
-    max-height: 500px !important;
-    width: auto;
-    object-fit: cover;
-    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.poster-highlight:hover {
-    transform: scale(1.05) rotate(1deg);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
-}
-
-.text-shadow {
-    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
-}
-
-/* --- NÚT ĐIỀU HƯỚNG ĐƯỢC CẢI THIỆN --- */
-.custom-nav-btn {
-    width: 80px;
-    height: 100%;
-    opacity: 0;
-    transition: all 0.4s ease;
-    z-index: 10 !important;
-    background: transparent;
-    border: none;
-}
-
-#heroCarousel:hover .custom-nav-btn {
-    opacity: 0.7;
-}
-
-.custom-nav-btn:hover {
-    opacity: 1 !important;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-    width: 4rem;
-    height: 4rem;
-    background-color: rgba(220, 53, 69, 0.8);
-    border-radius: 50%;
-    background-size: 50%;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-}
-
-.custom-nav-btn:hover .carousel-control-prev-icon,
-.custom-nav-btn:hover .carousel-control-next-icon {
-    background-color: rgba(220, 53, 69, 1);
-    transform: scale(1.15);
-}
-
-/* --- HIỆU ỨNG CHO CÁC THÀNH PHẦN NỘI DUNG --- */
-.carousel-content .badge,
-.carousel-content h1,
-.carousel-content .lead,
-.carousel-content p,
-.carousel-content .btn {
-    animation: fadeInUp 0.8s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* --- STYLE CHO CARD PHIM --- */
-.movie-card img {
-    height: 350px;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-}
-
-.movie-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.movie-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15) !important;
-}
-
-.movie-card:hover img {
-    transform: scale(1.08);
-}
-
-.movie-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-}
-
-.movie-card:hover .movie-overlay {
-    opacity: 1;
-}
-
-.nav-link {
-    font-weight: 600;
-    color: #6c757d;
-    transition: all 0.3s ease;
-}
-
-.nav-link.active {
-    color: #0d6efd !important;
-    border-bottom: 3px solid #0d6efd !important;
-    transform: translateY(-1px);
-}
+/* CSS GIỮ NGUYÊN */
+.search-container { position: relative; z-index: 100; }
+.search-card { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important; transition: all 0.3s ease; }
+.search-card:hover { box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15) !important; transform: translateY(-2px); }
+.search-filter .form-select { border-radius: 12px !important; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
+.search-filter .form-select:focus { box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15); border-color: #0d6efd; }
+.search-input-container { position: relative; }
+.search-input-container .input-group { background: rgba(255, 255, 255, 0.8); border-radius: 12px; padding: 0.5rem 0; transition: all 0.3s ease; }
+.search-input-container .input-group:focus-within { background: white; box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1); }
+.search-input-container .form-control { background: transparent !important; font-size: 1.05rem; padding: 0.25rem 0.5rem; border: none !important; box-shadow: none !important; }
+.search-input-container .form-control::placeholder { color: #6c757d; opacity: 0.8; }
+.search-input-container .input-group-text { padding: 0.5rem 1rem; color: #6c757d; }
+.search-underline { position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: linear-gradient(90deg, #0d6efd, #6f42c1); transition: all 0.3s ease; transform: translateX(-50%); }
+.search-input-container:focus-within .search-underline { width: 100%; }
+.search-btn { background: linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%); border: none; box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3); transition: all 0.3s ease; padding: 0.75rem 1.5rem; }
+.search-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(13, 110, 253, 0.4); }
+.animate-fade-in { animation: fadeInUp 0.5s ease-out; }
+/* Carousel & Cards */
+.carousel-fade .carousel-item { opacity: 0; transition: opacity 1.2s ease-in-out; transform: none !important; }
+.carousel-fade .carousel-item.active { opacity: 1; }
+.carousel-bg { transition: transform 1.5s ease-in-out, filter 1.5s ease-in-out; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 1; }
+.carousel-item.active .carousel-bg { transform: scale(1.05); filter: blur(15px) brightness(0.6); }
+.carousel-item:not(.active) .carousel-bg { transform: scale(1.1); filter: blur(25px) brightness(0.5); }
+.carousel-overlay { position: absolute; width: 100%; height: 100%; background: linear-gradient(90deg, rgba(0,0,0,0.8), rgba(0,0,0,0.4)); z-index: 2; }
+.carousel-content { position: relative; z-index: 3; }
+.poster-highlight { max-height: 500px !important; transition: all 0.5s; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+.poster-highlight:hover { transform: scale(1.05) rotate(1deg); }
+.custom-nav-btn { width: 80px; opacity: 0; transition: 0.4s; z-index: 10; }
+#heroCarousel:hover .custom-nav-btn { opacity: 0.7; }
+.custom-nav-btn:hover { opacity: 1 !important; background: rgba(0,0,0,0.2); }
+.movie-card img { height: 350px; object-fit: cover; transition: 0.5s; }
+.movie-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important; }
+.movie-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); opacity: 0; transition: 0.4s; }
+.movie-card:hover .movie-overlay { opacity: 1; }
+.nav-link { font-weight: 600; color: #6c757d; }
+.nav-link.active { color: #0d6efd !important; border-bottom: 3px solid #0d6efd !important; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Thêm hiệu ứng mượt mà cho carousel
-    const carousel = document.getElementById('heroCarousel');
-    
-    if (carousel) {
-        // Khởi tạo carousel với cấu hình tối ưu
-        const carouselInstance = new bootstrap.Carousel(carousel, {
-            interval: 5000,
-            wrap: true,
-            touch: true,
-            pause: 'hover'
-        });
-
-        // Thêm hiệu ứng cho các phần tử khi slide thay đổi
-        carousel.addEventListener('slide.bs.carousel', function(e) {
-            // Thêm hiệu ứng cho slide mới
-            const nextSlide = e.relatedTarget;
-            const contentElements = nextSlide.querySelectorAll('.badge, h1, .lead, p, .btn');
-            
-            contentElements.forEach((element, index) => {
-                element.style.animation = 'none';
-                setTimeout(() => {
-                    element.style.animation = `fadeInUp 0.8s ease-out ${index * 0.1}s both`;
-                }, 50);
-            });
-        });
+    // Focus vào ô tìm kiếm nếu có giá trị
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && searchInput.value) {
+        searchInput.focus();
+        // Cuộn màn hình tới phần kết quả
+        const results = document.querySelector('.search-results');
+        if(results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 });
 </script>

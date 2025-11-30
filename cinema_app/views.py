@@ -42,25 +42,39 @@ def is_staff_user(user):
     except Profile.DoesNotExist:
         return user.is_staff
 
+# ... (Giữ nguyên các import cũ)
+# Thêm import Q nếu chưa có (để tìm kiếm nâng cao nếu cần, nhưng ở đây dùng filter cơ bản cũng được)
+# ... (Giữ nguyên các import cũ)
+# Thêm import Q nếu chưa có (để tìm kiếm nâng cao nếu cần, nhưng ở đây dùng filter cơ bản cũng được)
+from django.db.models import Q 
+
+# --- Helper Function: Lấy danh sách thể loại ---
 def get_all_genres():
-    """Lấy danh sách tất cả thể loại duy nhất từ DB"""
-    # Lấy tất cả chuỗi genre (ví dụ: "Hành động, Hài")
+    """
+    Lấy tất cả thể loại từ DB, tách các chuỗi dạng 'Hành động, Hài' thành list duy nhất.
+    """
+    # Lấy tất cả giá trị cột genre
     raw_genres = Movie.objects.values_list('genre', flat=True).distinct()
     unique_genres = set()
+    
     for g_str in raw_genres:
         if g_str:
-            # Tách dấu phẩy và xóa khoảng trắng thừa
+            # Tách dấu phẩy (nếu phim có nhiều thể loại) và xóa khoảng trắng thừa
             parts = [x.strip() for x in g_str.split(',')]
-            unique_genres.update(parts)
+            for p in parts:
+                if p: unique_genres.add(p)
+                
     return sorted(list(unique_genres))
 
-# --- Views Người Dùng ---
-
+# --- CẬP NHẬT VIEW HOME ---
 def home(request):
     today = timezone.localdate()
-    selected_genre = request.GET.get('genre', '')
+    
+    # 1. Lấy tham số từ URL
+    q = request.GET.get('q', '').strip()
+    selected_genre = request.GET.get('genre', '').strip()
 
-    # Base Query
+    # 2. Query cơ bản
     now_showing_movies = Movie.objects.filter(
         release_date__lte=today,
         showtime__start_time__gte=timezone.now()
@@ -70,32 +84,49 @@ def home(request):
         release_date__gt=today
     ).order_by('release_date')
 
-    # Áp dụng bộ lọc nếu có
+    # 3. Áp dụng bộ lọc (Search + Genre)
+    if q:
+        now_showing_movies = now_showing_movies.filter(title__icontains=q)
+        coming_soon_movies = coming_soon_movies.filter(title__icontains=q)
+    
     if selected_genre:
         now_showing_movies = now_showing_movies.filter(genre__icontains=selected_genre)
         coming_soon_movies = coming_soon_movies.filter(genre__icontains=selected_genre)
 
-    upcoming_showtimes = ShowTime.objects.filter(
+    # Lấy lịch chiếu (chỉ lọc theo genre nếu có, không lọc theo tên phim để tránh list trống trơn)
+   # ... (các đoạn trên giữ nguyên)
+
+    # --- SỬA ĐOẠN NÀY ---
+    # 1. Tạo QuerySet cơ bản (chưa cắt [:12])
+    upcoming_showtimes_qs = ShowTime.objects.filter(
         start_time__gte=timezone.now()
-    ).select_related('movie', 'room').order_by('start_time')[:12]
-    
-    # Nếu lọc theo genre, cũng lọc luôn suất chiếu cho đồng bộ
+    ).select_related('movie', 'room').order_by('start_time')
+
+    # 2. Áp dụng bộ lọc (nếu có)
     if selected_genre:
-        upcoming_showtimes = upcoming_showtimes.filter(movie__genre__icontains=selected_genre)
+        upcoming_showtimes_qs = upcoming_showtimes_qs.filter(movie__genre__icontains=selected_genre)
+
+    # 3. Sau khi lọc xong mới được cắt (Slice) lấy 12 bản ghi đầu tiên
+    upcoming_showtimes = upcoming_showtimes_qs[:12]
 
     return render(request, 'cinema_app/home.html', {
+        # ... (giữ nguyên context)
         'now_showing_movies': now_showing_movies,
         'coming_soon_movies': coming_soon_movies,
         'upcoming_showtimes': upcoming_showtimes,
-        'genres': get_all_genres(),        # Truyền danh sách thể loại
-        'selected_genre': selected_genre,  # Truyền thể loại đang chọn
+        'genres': get_all_genres(),
+        'selected_genre': selected_genre,
+        'q': q,
     })
-
+# --- CẬP NHẬT VIEW MOVIE_LIST ---
 def movie_list(request):
-    q = request.GET.get('q', '')
-    selected_genre = request.GET.get('genre', '')
     today = timezone.localdate()
     
+    # 1. Lấy tham số
+    q = request.GET.get('q', '').strip()
+    selected_genre = request.GET.get('genre', '').strip()
+    
+    # 2. Query cơ bản
     now_showing_movies = Movie.objects.filter(
         release_date__lte=today
     ).distinct().order_by('-release_date')
@@ -104,12 +135,11 @@ def movie_list(request):
         release_date__gt=today
     ).order_by('release_date')
 
-    # Lọc theo từ khóa tìm kiếm
+    # 3. Áp dụng bộ lọc
     if q:
         now_showing_movies = now_showing_movies.filter(title__icontains=q)
         coming_soon_movies = coming_soon_movies.filter(title__icontains=q)
-
-    # Lọc theo thể loại
+        
     if selected_genre:
         now_showing_movies = now_showing_movies.filter(genre__icontains=selected_genre)
         coming_soon_movies = coming_soon_movies.filter(genre__icontains=selected_genre)
@@ -121,6 +151,8 @@ def movie_list(request):
         'genres': get_all_genres(),
         'selected_genre': selected_genre,
     })
+
+# ... (Các hàm khác giữ nguyên)
 
 # ... (CÁC HÀM KHÁC GIỮ NGUYÊN KHÔNG ĐỔI) ...
 # (Copy phần còn lại của views.py cũ vào đây từ dòng movie_detail trở đi)
