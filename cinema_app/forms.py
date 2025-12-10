@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 # --- QUAN TRỌNG: Thêm Profile vào dòng import này ---
-from .models import Movie, CinemaRoom, ShowTime, Promotion, Ticket, Review, Profile 
+from .models import Movie, CinemaRoom, ShowTime, Promotion, Ticket, Review, Profile, Food, FoodOrder, FoodOrderItem 
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email")
@@ -96,3 +96,36 @@ class ManageUserForm(forms.ModelForm):
         
         if self.instance.pk:
             self.fields['username'].widget.attrs['readonly'] = True
+
+# --- Form Đặt Đồ Ăn ---
+class FoodOrderForm(forms.Form):
+    """Form để người dùng chọn đồ ăn khi đặt vé"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lấy tất cả đồ ăn đang có sẵn
+        foods = Food.objects.filter(is_available=True)
+        
+        for food in foods:
+            field_name = f"food_{food.id}"
+            self.fields[field_name] = forms.IntegerField(
+                label=f"{food.name} - {food.price:,.0f}đ",
+                min_value=0,
+                initial=0,
+                required=False,
+                widget=forms.NumberInput(attrs={
+                    'class': 'form-control food-quantity',
+                    'data-food-id': food.id,
+                    'data-food-name': food.name,
+                    'data-food-price': str(food.price),
+                })
+            )
+
+class FoodManageForm(forms.ModelForm):
+    """Form để quản trị viên quản lý đồ ăn"""
+    class Meta:
+        model = Food
+        fields = ['name', 'description', 'category', 'price', 'image', 'is_available']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'category': forms.Select(),
+        }

@@ -19,6 +19,16 @@ urlpatterns = [
     path('api/lock-seat/', views.lock_seat, name='api_lock_seat'),
     path('api/release-seat/', views.release_seat, name='api_release_seat'),
 
+    # --- ĐẶT ĐỒ ĂN (MỚI) ---
+    path('food/menu/', views.food_menu, name='food_menu'),
+    path('food/cart/', views.view_food_cart, name='view_food_cart'),
+    path('food/checkout/', views.checkout_food, name='checkout_food'),
+    path('my-food-orders/', views.my_food_orders, name='my_food_orders'),
+    
+    path('api/add-to-food-cart/', views.add_to_food_cart, name='api_add_to_food_cart'),
+    path('api/remove-food-from-cart/', views.remove_food_from_cart, name='api_remove_food_from_cart'),
+    # ----------------------
+
     # Auth
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
@@ -54,13 +64,21 @@ urlpatterns = [
     
     path('manage/reports/', views.manage_reports, name='manage_reports'),
 
-    # ... (Các đường dẫn cũ giữ nguyên)
+
     
     # --- QUẢN LÝ NGƯỜI DÙNG (MỚI) ---
     path('manage/users/', views.manage_users, name='manage_users'),
     path('manage/users/create/', views.manage_user_create, name='manage_user_create'),
     path('manage/users/<int:pk>/edit/', views.manage_user_edit, name='manage_user_edit'),
     path('manage/users/<int:pk>/delete/', views.manage_user_delete, name='manage_user_delete'),
+    # --------------------------------
+
+    # --- QUẢN LÝ ĐỒ ĂN (MỚI) ---
+    path('manage/foods/', views.manage_foods, name='manage_foods'),
+    path('manage/foods/create/', views.manage_food_create, name='manage_food_create'),
+    path('manage/foods/<int:pk>/edit/', views.manage_food_edit, name='manage_food_edit'),
+    path('manage/foods/<int:pk>/delete/', views.manage_food_delete, name='manage_food_delete'),
+    path('manage/food-orders/', views.manage_food_orders, name='manage_food_orders'),
     # --------------------------------
 
 ]

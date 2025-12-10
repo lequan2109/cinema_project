@@ -120,6 +120,8 @@
                                             <a href="{% url 'manage_user_edit' u.id %}" class="btn btn-outline-primary" title="Sửa">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            
+                                           
                                             {% if not u.is_superuser and u != request.user %}
                                             <a href="{% url 'manage_user_delete' u.id %}" 
                                                class="btn btn-outline-danger" 

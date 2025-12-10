@@ -1,0 +1,141 @@
+{% extends 'cinema_app/base.html' %}
+{% load form_tags %}
+{% block title %}Quản Lý Đồ Ăn{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4 fw-bold text-dark">Quản Lý Đồ Ăn & Thức Uống</h2>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 text-success">
+                        <i class="fas fa-utensils me-2"></i>
+                        Danh Sách Đồ Ăn ({{ foods.count }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên sản phẩm</th>
+                                    <th>Danh mục</th>
+                                    <th class="text-end">Giá</th>
+                                    <th class="text-center">Trạng thái</th>
+                                    <th class="text-end">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for food in foods %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ food.name }}</div>
+                                        <div class="small text-muted">{{ food.description|truncatewords:5 }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ food.get_category_display }}</span>
+                                    </td>
+                                    <td class="text-end fw-bold">{{ food.price|floatformat:0 }}đ</td>
+                                    <td class="text-center">
+                                        {% if food.is_available %}
+                                            <span class="badge bg-success">Có sẵn</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Hết hàng</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'manage_food_edit' food.id %}" class="btn btn-outline-primary" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-success" 
+                                                    data-bs-toggle="modal" data-bs-target="#addFoodModal" 
+                                                    title="Thêm mới">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            <a href="{% url 'manage_food_delete' food.id %}" 
+                                               class="btn btn-outline-danger" 
+                                               onclick="return confirm('Bạn chắc chắn muốn xóa?');"
+                                               title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted py-4">Chưa có đồ ăn nào.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm Đồ Ăn Mới -->
+<div class="modal fade" id="addFoodModal" tabindex="-1" aria-labelledby="addFoodModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addFoodModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Thêm Đồ Ăn Mới
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'manage_food_create' %}" id="addFoodForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Tên sản phẩm *</label>
+                        {{ form.name|add_class:'form-control' }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Mô tả</label>
+                        {{ form.description|add_class:'form-control' }}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary small">Danh mục *</label>
+                            {{ form.category|add_class:'form-select' }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary small">Giá (đ) *</label>
+                            {{ form.price|add_class:'form-control' }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Hình ảnh</label>
+                        {{ form.image|add_class:'form-control' }}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.is_available|add_class:'form-check-input' }}
+                            <label class="form-check-label" for="{{ form.is_available.id_for_label }}">
+                                Có sẵn
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-success fw-bold" form="addFoodForm">
+                    <i class="fas fa-save me-2"></i>
+                    Thêm Mới
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

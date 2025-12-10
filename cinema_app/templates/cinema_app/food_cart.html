@@ -1,0 +1,151 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Giỏ Hàng Đồ Ăn{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold text-dark">
+        <i class="fas fa-shopping-cart me-2"></i>
+        Giỏ Hàng Đồ Ăn
+    </h2>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <table class="table table-hover mb-0" id="cart-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tên sản phẩm</th>
+                                <th class="text-center">Số lượng</th>
+                                <th class="text-center">Giá</th>
+                                <th class="text-end">Tổng</th>
+                                <th class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items">
+                            <!-- Sẽ được điền bằng JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="empty-cart" class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Giỏ của bạn trống</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-receipt me-2"></i>
+                        Tóm tắt đơn hàng
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tổng cộng:</span>
+                            <strong id="summary-total">0đ</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <span class="h5">Thanh toán:</span>
+                            <strong class="h5 text-danger" id="summary-final">0đ</strong>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <form method="POST" action="{% url 'checkout_food' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success fw-bold" id="btn-checkout" style="display: none;">
+                                <i class="fas fa-check me-2"></i> Tiếp tục thanh toán
+                            </button>
+                        </form>
+                        <a href="{% url 'food_menu' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i> Quay lại menu
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCart() {
+    return JSON.parse(localStorage.getItem('foodCart')) || {};
+}
+
+function updateCartDisplay() {
+    const cart = getCart();
+    const cartItems = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+    const btnCheckout = document.getElementById('btn-checkout');
+    const summaryTotal = document.getElementById('summary-total');
+    const summaryFinal = document.getElementById('summary-final');
+    
+    let html = '';
+    let total = 0;
+    
+    if (Object.keys(cart).length === 0) {
+        cartItems.innerHTML = '';
+        emptyCart.style.display = 'block';
+        btnCheckout.style.display = 'none';
+    } else {
+        emptyCart.style.display = 'none';
+        btnCheckout.style.display = 'block';
+        
+        for (const [foodId, item] of Object.entries(cart)) {
+            const subtotal = parseFloat(item.price) * item.quantity;
+            total += subtotal;
+            html += `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${item.name}</div>
+                    </td>
+                    <td class="text-center">
+                        <div class="input-group input-group-sm" style="width: 100px; margin: 0 auto;">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateQuantity(${foodId}, -1)">−</button>
+                            <input type="number" class="form-control text-center" value="${item.quantity}" readonly>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateQuantity(${foodId}, 1)">+</button>
+                        </div>
+                    </td>
+                    <td class="text-center">${parseFloat(item.price).toLocaleString()}đ</td>
+                    <td class="text-end">${subtotal.toLocaleString()}đ</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger" type="button" onclick="removeItem(${foodId})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    
+    cartItems.innerHTML = html;
+    summaryTotal.textContent = total.toLocaleString() + 'đ';
+    summaryFinal.textContent = total.toLocaleString() + 'đ';
+}
+
+function removeItem(foodId) {
+    if (confirm('Bạn chắc chắn muốn xóa sản phẩm này?')) {
+        const cart = getCart();
+        delete cart[foodId];
+        localStorage.setItem('foodCart', JSON.stringify(cart));
+        updateCartDisplay();
+    }
+}
+
+function updateQuantity(foodId, change) {
+    const cart = getCart();
+    if (foodId in cart) {
+        cart[foodId].quantity = Math.max(1, cart[foodId].quantity + change);
+        localStorage.setItem('foodCart', JSON.stringify(cart));
+        updateCartDisplay();
+    }
+}
+
+// Load cart khi page load
+updateCartDisplay();
+</script>
+{% endblock %}

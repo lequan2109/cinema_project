@@ -1,0 +1,80 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Lịch Sử Đặt Đồ Ăn{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 fw-bold text-dark">
+        <i class="fas fa-history me-2"></i>
+        Lịch Sử Đặt Đồ Ăn
+    </h2>
+
+    {% if orders %}
+    <div class="row">
+        {% for order_item in orders %}
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom py-3">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="card-title mb-1">
+                                <i class="fas fa-receipt me-2"></i>
+                                Đơn {{ order_item.order.order_code }}
+                            </h5>
+                            <small class="text-muted">{{ order_item.order.ordered_at|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        <div class="col-auto text-end">
+                            {% if order_item.order.is_paid %}
+                            <span class="badge bg-success">Đã thanh toán</span>
+                            {% else %}
+                            <span class="badge bg-warning">Chờ thanh toán</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sản phẩm</th>
+                                <th class="text-center">Số lượng</th>
+                                <th class="text-end">Tổng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order_item.items %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end">{{ item.subtotal|floatformat:0 }}đ</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Tổng cộng:</strong>
+                            <span class="h5 text-danger ms-2">{{ order_item.order.total_price|floatformat:0 }}đ</span>
+                        </div>
+                        <div>
+                            {% if not order_item.order.is_paid %}
+                            <button class="btn btn-sm btn-primary" onclick="alert('Chức năng thanh toán lại sẽ được cập nhật')">
+                                <i class="fas fa-credit-card me-1"></i> Thanh toán
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle me-2"></i>
+        Bạn chưa có đơn đặt đồ ăn nào.
+        <a href="{% url 'food_menu' %}" class="alert-link">Đặt hàng ngay</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
