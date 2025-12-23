@@ -1189,6 +1189,51 @@ def manage_reports(request):
     return render(request, 'cinema_app/manage/manage_reports.html', {'revenue': revenue, 'count': count, 'by_movie': by_movie, 'start': start, 'end': end})
 
 @user_passes_test(is_staff_user)
+def manage_tickets(request):
+    """
+    Quản lý vé (staff): lọc theo trạng thái thanh toán, ngày đặt, từ khóa.
+    """
+    status = request.GET.get('status', '')
+    q = request.GET.get('q', '').strip()
+    start = request.GET.get('start')
+    end = request.GET.get('end')
+
+    tickets_qs = Ticket.objects.select_related('user', 'showtime__movie', 'showtime__room').order_by('-booked_at')
+
+    if status == 'paid':
+        tickets_qs = tickets_qs.filter(is_paid=True)
+    elif status == 'unpaid':
+        tickets_qs = tickets_qs.filter(is_paid=False)
+
+    if start:
+        tickets_qs = tickets_qs.filter(booked_at__date__gte=start)
+    if end:
+        tickets_qs = tickets_qs.filter(booked_at__date__lte=end)
+
+    if q:
+        tickets_qs = tickets_qs.filter(
+            Q(booking_code__icontains=q) |
+            Q(user__username__icontains=q) |
+            Q(showtime__movie__title__icontains=q)
+        )
+
+    stats = tickets_qs.aggregate(
+        total=Count('id'),
+        paid=Count('id', filter=Q(is_paid=True)),
+        unpaid=Count('id', filter=Q(is_paid=False)),
+        revenue=Sum('price_paid', filter=Q(is_paid=True))
+    )
+
+    return render(request, 'cinema_app/manage/manage_tickets.html', {
+        'tickets': tickets_qs,
+        'status': status,
+        'q': q,
+        'start': start,
+        'end': end,
+        'stats': stats
+    })
+
+@user_passes_test(is_staff_user)
 def manage_users(request):
     """
     QUẢN LÝ NGƯỜI DÙNG (ADMIN)

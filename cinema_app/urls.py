@@ -62,6 +62,7 @@ urlpatterns = [
     path('manage/promotions/<int:pk>/edit/', views.manage_promotion_edit, name='manage_promotion_edit'),
     path('manage/promotions/<int:pk>/delete/', views.manage_promotion_delete, name='manage_promotion_delete'),
     
+    path('manage/tickets/', views.manage_tickets, name='manage_tickets'),
     path('manage/reports/', views.manage_reports, name='manage_reports'),
 
 

@@ -1,0 +1,123 @@
+{% extends 'cinema_app/base.html' %}
+{% block title %}Quản lý vé{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <h2 class="mb-2">Quản lý vé</h2>
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'manage_dashboard' %}">
+            <i class="fas fa-arrow-left me-1"></i>Về dashboard
+        </a>
+    </div>
+
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Từ khóa</label>
+            <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Mã đơn / username / phim">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Trạng thái</label>
+            <select name="status" class="form-select">
+                <option value="" {% if not status %}selected{% endif %}>Tất cả</option>
+                <option value="paid" {% if status == 'paid' %}selected{% endif %}>Đã thanh toán</option>
+                <option value="unpaid" {% if status == 'unpaid' %}selected{% endif %}>Chưa thanh toán</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Từ ngày</label>
+            <input type="date" name="start" value="{{ start }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Đến ngày</label>
+            <input type="date" name="end" value="{{ end }}" class="form-control">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-primary flex-fill" type="submit">
+                <i class="fas fa-filter me-1"></i>Lọc
+            </button>
+            <a class="btn btn-outline-secondary flex-fill" href="{% url 'manage_tickets' %}">Xóa lọc</a>
+        </div>
+    </form>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <div class="card text-bg-light shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Tổng vé</div>
+                    <div class="fs-4 fw-bold">{{ stats.total|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-bg-success-subtle shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Đã thanh toán</div>
+                    <div class="fs-4 fw-bold text-success">{{ stats.paid|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-bg-warning-subtle shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Chưa thanh toán</div>
+                    <div class="fs-4 fw-bold text-warning">{{ stats.unpaid|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-bg-info-subtle shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Doanh thu (lọc)</div>
+                    <div class="fs-4 fw-bold text-info">{{ stats.revenue|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Người dùng</th>
+                        <th>Phim / Suất</th>
+                        <th>Ghế</th>
+                        <th class="text-end">Giá</th>
+                        <th>Trạng thái</th>
+                        <th>Đặt lúc</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tickets %}
+                    <tr>
+                        <td class="fw-semibold">{{ t.booking_code }}</td>
+                        <td>
+                            {{ t.user.username }}
+                            <div class="text-muted small">{{ t.user.email }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ t.showtime.movie.title }}</div>
+                            <div class="text-muted small">{{ t.showtime.start_time|date:"d/m H:i" }} · {{ t.showtime.room.name }}</div>
+                        </td>
+                        <td>{{ t.seat_label }}</td>
+                        <td class="text-end">{{ t.price_paid }}</td>
+                        <td>
+                            {% if t.is_paid %}
+                                <span class="badge text-bg-success">Đã trả</span>
+                            {% else %}
+                                <span class="badge text-bg-warning text-dark">Chưa trả</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ t.booked_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Không có vé phù hợp bộ lọc.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

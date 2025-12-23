@@ -1,5 +1,5 @@
 {% extends 'cinema_app/base.html' %}
-{% block title %}Quản lý — Dashboard{% endblock %}
+{% block title %}Quản lý · Dashboard{% endblock %}
 {% block content %}
 <h2>Bảng điều khiển</h2>
 <div class="row g-3">
@@ -30,8 +30,9 @@
   <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_movies' %}">Quản lý phim</a>
   <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_rooms' %}">Quản lý phòng</a>
   <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_showtimes' %}">Quản lý suất chiếu</a>
-  <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_promotions' %}">Khuyến mãi</a>
-  <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_reports' %}">Báo cáo cũ</a>
+  <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_promotions' %}">Khuyến mại</a>
+  <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_reports' %}">Báo cáo</a>
+  <a class="btn btn-outline-secondary me-1 mb-2" href="{% url 'manage_tickets' %}">Quản lý vé</a>
   <a class="btn btn-outline-info me-1 mb-2" href="{% url 'manage_users' %}">
         <i class="fas fa-users me-1"></i> Quản lý người dùng
     </a>
