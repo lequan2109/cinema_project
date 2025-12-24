@@ -28,19 +28,33 @@ import uuid # Tạo mã định danh duy nhất (nếu cần)
 from django.views.decorators.http import require_POST # Chỉ cho phép method POST
 from django.core.cache import cache # Hệ thống Cache (lưu trữ RAM) để giữ ghế Realtime
 from django.core.validators import validate_email
+from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 
 # 6. Các file nội bộ của dự án
-from . import vnpay_helpers, utils # Thư viện thanh toán VNPAY và gửi Email
-from .models import Movie, CinemaRoom, ShowTime, Ticket, Promotion, Profile, Review, Food, FoodOrder, FoodOrderItem # Các bảng dữ liệu
-from .forms import ( # Các biểu mẫu nhập liệu
+from . import vnpay_helpers, utils # Thu vien thanh toan VNPAY va gui Email
+from .models import CinemaRoom, Movie, Profile, Promotion, Review, ShowTime, Ticket # Cac bang du lieu
+from .forms import ( # Cac bieu mau nhap lieu
     RegisterForm, LoginForm, MovieForm, RoomForm, ShowTimeForm, 
-    PromotionForm, BookingForm, ReviewForm, ManageUserForm, FoodOrderForm, FoodManageForm
+    PromotionForm, BookingForm, ReviewForm, ManageUserForm
 )
+
+# Thời gian giữ ghế tạm trong cache (giây)
+LOCK_TTL_SECONDS = 600
+# Thoi gian timeout thanh toan (giay) de huy ve chua thanh toan
+PAYMENT_TIMEOUT_SECONDS = 600
 
 # ==============================================================================
 # PHẦN 2: CÁC HÀM PHỤ TRỢ (HELPERS)
 # ==============================================================================
+
+def cleanup_stale_unpaid_tickets():
+    """
+    Xoa cac ve chua thanh toan qua thoi gian PAYMENT_TIMEOUT_SECONDS.
+    Giai phong ghe trong truong hop nguoi dung thoat khi dang thanh toan.
+    """
+    cutoff = timezone.now() - timedelta(seconds=PAYMENT_TIMEOUT_SECONDS)
+    Ticket.objects.filter(is_paid=False, booked_at__lt=cutoff).delete()
 
 def is_staff_user(user):
     """
@@ -282,11 +296,16 @@ def booking_view(request, showtime_id):
     """
     showtime = get_object_or_404(ShowTime, pk=showtime_id)
     room = showtime.room
+
+    # Hủy vé chưa thanh toán quá thời gian cho phép để giải phóng ghế
+    cleanup_stale_unpaid_tickets()
+    pending_cutoff = timezone.now() - timedelta(seconds=PAYMENT_TIMEOUT_SECONDS)
     
-    # Lấy danh sách ghế đã bán (Đã thanh toán thành công)
+    # Ghế đã bán + ghế đang chờ thanh toán (is_paid=False, còn trong timeout) => không cho người khác chọn
     taken_seats = set(Ticket.objects.filter(showtime=showtime, is_paid=True).values_list('seat_row', 'seat_number'))
+    pending_seats = set(Ticket.objects.filter(showtime=showtime, is_paid=False, booked_at__gte=pending_cutoff).values_list('seat_row', 'seat_number'))
     
-    # Lấy danh sách ghế đang bị người khác giữ (Locked in Cache)
+    # Ghế bị giữ trong cache bởi session khác
     locked_seats = set()
     for r in range(room.rows):
         for c in range(1, room.cols + 1):
@@ -319,9 +338,19 @@ def booking_view(request, showtime_id):
                     seat_number = int(''.join([c for c in seat if c.isdigit()]))
                     seat_tuple = (seat_row, seat_number)
 
+                    # Validate tọa độ ghế
+                    if not seat_row or seat_number < 1:
+                        continue
+                    if (ord(seat_row) - ord('A')) >= room.rows or seat_number > room.cols:
+                        seats_taken_or_locked.append(f"{seat} (không tồn tại)")
+                        continue
+
                     # Check DB và Cache
                     if seat_tuple in taken_seats:
                         seats_taken_or_locked.append(f"{seat} (đã được mua)")
+                        continue
+                    if seat_tuple in pending_seats:
+                        seats_taken_or_locked.append(f"{seat} (đang chờ thanh toán)")
                         continue
                     
                     cache_key = f"seat_{showtime.id}_{seat}"
@@ -404,6 +433,8 @@ def booking_view(request, showtime_id):
             
             if (row_label, c) in taken_seats:
                 status = 'taken'
+            elif (row_label, c) in pending_seats:
+                status = 'locked'
             elif (row_label, c) in locked_seats:
                 status = 'locked'
             elif cache.get(cache_key) == request.session.session_key:
@@ -504,17 +535,45 @@ def lock_seat(request):
     - Trả về: JSON success hoặc error.
     """
     try:
-        if not request.session.session_key: request.session.create()
+        if not request.session.session_key:
+            request.session.create()
+
         data = json.loads(request.body)
         showtime_id = data.get('showtime_id')
-        seat_label = data.get('seat_label')
+        seat_label_raw = data.get('seat_label')
         
-        if not showtime_id or not seat_label:
+        if not showtime_id or not seat_label_raw:
             return JsonResponse({'status': 'error', 'message': 'Thiếu thông tin.'}, status=400)
-            
+
+        showtime = ShowTime.objects.select_related('room').filter(id=showtime_id).first()
+        if not showtime:
+            return JsonResponse({'status': 'error', 'message': 'Suất chiếu không tồn tại.'}, status=404)
+
+        seat_label = str(seat_label_raw).strip().upper()
+        seat_row = ''.join([c for c in seat_label if c.isalpha()])
+        seat_number_str = ''.join([c for c in seat_label if c.isdigit()])
+        if not seat_row or not seat_number_str:
+            return JsonResponse({'status': 'error', 'message': 'Ghế không hợp lệ.'}, status=400)
+
+        seat_number = int(seat_number_str)
+        # Kiểm tra tọa độ ghế nằm trong phòng
+        if seat_number < 1 or (ord(seat_row) - ord('A')) >= showtime.room.rows or seat_number > showtime.room.cols:
+            return JsonResponse({'status': 'error', 'message': 'Ghế không tồn tại.'}, status=400)
+
+        # Đã bán hoặc đang chờ thanh toán -> không cho lock
+        existing = Ticket.objects.filter(showtime_id=showtime_id, seat_row=seat_row, seat_number=seat_number)
+        if existing.filter(is_paid=True).exists():
+            return JsonResponse({'status': 'error', 'message': 'Ghế đã được mua.'}, status=409)
+        if existing.filter(is_paid=False).exists():
+            return JsonResponse({'status': 'error', 'message': 'Ghế đang chờ thanh toán.'}, status=409)
+
         cache_key = f"seat_{showtime_id}_{seat_label}"
+        locked_by = cache.get(cache_key)
+        if locked_by and locked_by != request.session.session_key:
+            return JsonResponse({'status': 'error', 'message': 'Ghế đã bị người khác giữ.'}, status=409)
+
         # cache.add trả về True nếu key chưa tồn tại (Lock thành công), False nếu đã có (Bị khóa)
-        is_locked = cache.add(cache_key, request.session.session_key, timeout=600)
+        is_locked = cache.add(cache_key, request.session.session_key, timeout=LOCK_TTL_SECONDS)
         
         if is_locked:
             return JsonResponse({'status': 'success', 'message': 'Giữ ghế thành công.'})
@@ -522,7 +581,7 @@ def lock_seat(request):
             # Kiểm tra xem có phải chính mình đang giữ không
             if cache.get(cache_key) == request.session.session_key:
                  return JsonResponse({'status': 'success', 'message': 'Bạn đã giữ ghế này.'})
-            return JsonResponse({'status': 'error', 'message': 'Ghế đã bị người khác chọn.'}, status=409)
+            return JsonResponse({'status': 'error', 'message': 'Ghế đã bị người khác giữ.'}, status=409)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
@@ -537,6 +596,9 @@ def release_seat(request):
         data = json.loads(request.body)
         showtime_id = data.get('showtime_id')
         seat_label = data.get('seat_label')
+
+        if not showtime_id or not seat_label:
+            return JsonResponse({'status': 'error', 'message': 'Thiếu thông tin.'}, status=400)
         
         cache_key = f"seat_{showtime_id}_{seat_label}"
         if cache.get(cache_key) == request.session.session_key:
@@ -657,356 +719,104 @@ def account_view(request):
     return render(request, 'cinema_app/account.html', {'profile': profile})
 
 # ==============================================================================
-# PHẦN 6.1: FOOD ORDER (ĐẶT ĐỒ ĂN)
-# ==============================================================================
-
-@login_required
-def food_menu(request):
-    """Trang Menu đồ ăn - Hiển thị danh sách đồ ăn"""
-    foods = Food.objects.filter(is_available=True)
-    categories = Food.CATEGORY_CHOICES
-    
-    # Lọc theo danh mục nếu có
-    category = request.GET.get('category', '')
-    if category:
-        foods = foods.filter(category=category)
-    
-    return render(request, 'cinema_app/food_menu.html', {
-        'foods': foods,
-        'categories': categories,
-        'selected_category': category
-    })
-
-@login_required
-@require_POST
-def add_to_food_cart(request):
-    """API AJAX - Thêm đồ ăn vào giỏ"""
-    try:
-        data = json.loads(request.body)
-        food_id = data.get('food_id')
-        quantity = int(data.get('quantity', 1))
-        
-        if quantity < 1:
-            return JsonResponse({'status': 'error', 'message': 'Số lượng không hợp lệ'}, status=400)
-        
-        food = Food.objects.get(id=food_id, is_available=True)
-        
-        # Lưu vào session
-        if 'food_cart' not in request.session:
-            request.session['food_cart'] = {}
-        
-        cart = request.session['food_cart']
-        food_key = str(food_id)
-        
-        if food_key in cart:
-            cart[food_key]['quantity'] += quantity
-        else:
-            cart[food_key] = {
-                'name': food.name,
-                'price': str(food.price),
-                'quantity': quantity
-            }
-        
-        request.session.modified = True
-        
-        # Tính tổng giỏ
-        total = sum(float(item['price']) * item['quantity'] for item in cart.values())
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': f'Đã thêm {food.name}',
-            'cart_total': total,
-            'cart_count': len(cart)
-        })
-    except Food.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Đồ ăn không tồn tại'}, status=404)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@login_required
-@require_POST
-def remove_food_from_cart(request):
-    """API AJAX - Xóa đồ ăn khỏi giỏ"""
-    try:
-        data = json.loads(request.body)
-        food_id = str(data.get('food_id'))
-        
-        if 'food_cart' in request.session:
-            cart = request.session['food_cart']
-            if food_id in cart:
-                del cart[food_id]
-                request.session.modified = True
-                
-                total = sum(float(item['price']) * item['quantity'] for item in cart.values())
-                
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Đã xóa khỏi giỏ',
-                    'cart_total': total,
-                    'cart_count': len(cart)
-                })
-        
-        return JsonResponse({'status': 'error', 'message': 'Không tìm thấy sản phẩm'}, status=404)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@login_required
-def view_food_cart(request):
-    """Trang xem giỏ đồ ăn"""
-    cart = request.session.get('food_cart', {})
-    cart_items = []
-    total = 0
-    
-    for food_id, item in cart.items():
-        price = float(item['price'])
-        quantity = item['quantity']
-        subtotal = price * quantity
-        cart_items.append({
-            'food_id': food_id,
-            'name': item['name'],
-            'price': price,
-            'quantity': quantity,
-            'subtotal': subtotal
-        })
-        total += subtotal
-    
-    return render(request, 'cinema_app/food_cart.html', {
-        'cart_items': cart_items,
-        'total': total
-    })
-
-@login_required
-def checkout_food(request):
-    """Thanh toán đơn đặt đồ ăn"""
-    cart = request.session.get('food_cart', {})
-    
-    if not cart:
-        messages.error(request, 'Giỏ đồ ăn của bạn trống.')
-        return redirect('food_menu')
-    
-    if request.method == 'POST':
-        try:
-            # Tính tổng tiền
-            total_price = 0
-            items_data = []
-            
-            for food_id, item in cart.items():
-                food = Food.objects.get(id=int(food_id))
-                quantity = item['quantity']
-                price = float(item['price'])
-                subtotal = price * quantity
-                
-                items_data.append({
-                    'food': food,
-                    'quantity': quantity,
-                    'unit_price': price,
-                    'subtotal': subtotal
-                })
-                total_price += subtotal
-            
-            # Tạo order code
-            order_time = timezone.now()
-            order_code = f"FOOD-{request.user.id}-{int(order_time.timestamp())}-{uuid.uuid4().hex[:4]}"
-            
-            with transaction.atomic():
-                # Tạo đơn đặt đồ ăn
-                food_order = FoodOrder.objects.create(
-                    user=request.user,
-                    showtime=None,  # Có thể thêm showtime nếu cần
-                    order_code=order_code,
-                    total_price=total_price,
-                    is_paid=False
-                )
-                
-                # Tạo chi tiết đơn
-                for item in items_data:
-                    FoodOrderItem.objects.create(
-                        food_order=food_order,
-                        food=item['food'],
-                        quantity=item['quantity'],
-                        unit_price=item['unit_price'],
-                        subtotal=item['subtotal']
-                    )
-            
-            # Xóa giỏ khỏi session
-            del request.session['food_cart']
-            request.session.modified = True
-            
-            # Tạo URL thanh toán VNPAY
-            payment_url = vnpay_helpers.get_vnpay_payment_url(
-                request=request,
-                booking_code=order_code,
-                total_price=total_price
-            )
-            
-            messages.success(request, 'Tạo đơn đặt đồ ăn thành công. Vui lòng thanh toán.')
-            return redirect(payment_url)
-            
-        except Exception as e:
-            messages.error(request, f'Lỗi: {str(e)}')
-            return redirect('view_food_cart')
-    
-    # GET request - hiển thị trang xác nhận
-    cart_items = []
-    total = 0
-    
-    for food_id, item in cart.items():
-        price = float(item['price'])
-        quantity = item['quantity']
-        subtotal = price * quantity
-        cart_items.append({
-            'food_id': food_id,
-            'name': item['name'],
-            'price': price,
-            'quantity': quantity,
-            'subtotal': subtotal
-        })
-        total += subtotal
-    
-    return render(request, 'cinema_app/food_checkout.html', {
-        'cart_items': cart_items,
-        'total': total
-    })
-
-@login_required
-def my_food_orders(request):
-    """Trang lịch sử đặt đồ ăn của tôi"""
-    orders = FoodOrder.objects.filter(user=request.user).prefetch_related('items__food').order_by('-ordered_at')
-    
-    processed_orders = []
-    for order in orders:
-        items = []
-        for item in order.items.all():
-            items.append({
-                'name': item.food.name if item.food else 'N/A',
-                'quantity': item.quantity,
-                'subtotal': item.subtotal
-            })
-        
-        processed_orders.append({
-            'order': order,
-            'items': items
-        })
-    
-    return render(request, 'cinema_app/my_food_orders.html', {
-        'orders': processed_orders
-    })
-
-# ==============================================================================
-# PHẦN 7: STAFF MANAGEMENT (QUẢN TRỊ VIÊN)
+# MANAGEMENT VIEWS (NON-FOOD)
 # ==============================================================================
 
 @user_passes_test(is_staff_user)
 def manage_dashboard(request):
-    """
-    DASHBOARD QUẢN TRỊ (CƠ BẢN)
-    - Hiển thị thống kê nhanh: Số lượng phim, rạp, vé bán ra, tổng doanh thu.
-    """
     stats = {
         'movies': Movie.objects.count(),
         'rooms': CinemaRoom.objects.count(),
         'showtimes': ShowTime.objects.count(),
-        'tickets': Ticket.objects.filter(is_paid=True).count(),
+        'tickets': Ticket.objects.count(),
         'revenue': Ticket.objects.filter(is_paid=True).aggregate(total=Sum('price_paid'))['total'] or 0,
     }
     return render(request, 'cinema_app/manage/dashboard.html', {'stats': stats})
 
+
 @user_passes_test(is_staff_user)
 def manage_analytics(request):
-    """
-    DASHBOARD PHÂN TÍCH DỮ LIỆU NÂNG CAO (DATA ANALYTICS)
-    - Chức năng: Tính toán KPI và chuẩn bị dữ liệu vẽ biểu đồ.
-    - Công nghệ: Django Aggregation, Date Truncation, Python Logic xử lý Matrix.
-    """
-    # 1. Lấy khoảng thời gian lọc (Mặc định 30 ngày)
-    end_date_str = request.GET.get('end_date')
-    start_date_str = request.GET.get('start_date')
-    today = timezone.now().date()
-    
-    if end_date_str:
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-    else:
-        end_date = today
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    today = timezone.localdate()
 
-    if start_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-    else:
-        start_date = end_date - timedelta(days=29)
+    if not start_date:
+        start_date = today.replace(day=1).isoformat()
+    if not end_date:
+        end_date = today.isoformat()
 
-    start_dt = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
-    end_dt = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
+    def parse_date(val, default):
+        try:
+            return datetime.fromisoformat(val).date()
+        except Exception:
+            return default
 
-    # --- QUERY DATASET ---
-    tickets_qs = Ticket.objects.filter(is_paid=True, booked_at__range=(start_dt, end_dt))
+    start = parse_date(start_date, today.replace(day=1))
+    end = parse_date(end_date, today)
 
-    # 2. TÍNH KPIs (Doanh thu, Giá vé TB, Tỷ lệ lấp đầy)
+    start_dt = timezone.make_aware(datetime.combine(start, datetime.min.time()))
+    end_dt = timezone.make_aware(datetime.combine(end, datetime.max.time()))
+
+    tickets_qs = Ticket.objects.filter(booked_at__range=(start_dt, end_dt))
+
     total_revenue = tickets_qs.aggregate(total=Sum('price_paid'))['total'] or 0
     total_tickets = tickets_qs.count()
-    avg_ticket_price = (total_revenue / total_tickets) if total_tickets > 0 else 0
-    
-    # Tính Occupancy Rate (Số vé / Tổng ghế của các suất chiếu đã qua)
+    avg_ticket_price = (total_revenue / total_tickets) if total_tickets else 0
+
     showtimes_in_period = ShowTime.objects.filter(start_time__range=(start_dt, end_dt))
     total_capacity = showtimes_in_period.aggregate(cap=Sum(F('room__rows') * F('room__cols')))['cap'] or 0
-    occupancy_rate = (total_tickets / total_capacity * 100) if total_capacity > 0 else 0
+    occupancy_rate = (total_tickets / total_capacity * 100) if total_capacity else 0
 
     kpis = {
         'revenue': total_revenue,
         'tickets': total_tickets,
         'avg_price': avg_ticket_price,
         'occupancy': round(occupancy_rate, 1),
-        'start_date': start_date.strftime('%Y-%m-%d'),
-        'end_date': end_date.strftime('%Y-%m-%d'),
+        'start_date': start.isoformat(),
+        'end_date': end.isoformat(),
     }
 
-    # 3. DỮ LIỆU BIỂU ĐỒ DOANH THU (Line Chart)
-    # Gom nhóm theo ngày
     revenue_by_date = tickets_qs.annotate(date=TruncDate('booked_at')).values('date').annotate(daily_revenue=Sum('price_paid')).order_by('date')
-    
+    revenue_map = {item['date']: item['daily_revenue'] for item in revenue_by_date}
+
     chart_dates = []
     chart_revenues = []
-    temp_date = start_date
-    revenue_map = {item['date']: item['daily_revenue'] for item in revenue_by_date}
-    
-    # Fill 0 cho những ngày không có doanh thu
-    while temp_date <= end_date:
+    temp_date = start
+    while temp_date <= end:
         chart_dates.append(temp_date.strftime('%d/%m'))
         chart_revenues.append(float(revenue_map.get(temp_date, 0)))
         temp_date += timedelta(days=1)
 
     line_chart_data = {'labels': chart_dates, 'data': chart_revenues}
 
-    # 4. DỮ LIỆU TOP 5 PHIM (Bar Chart)
     top_movies = tickets_qs.values('showtime__movie__title').annotate(total=Sum('price_paid')).order_by('-total')[:5]
     bar_chart_data = {
         'labels': [item['showtime__movie__title'] for item in top_movies],
-        'data': [float(item['total']) for item in top_movies]
+        'data': [float(item['total']) for item in top_movies],
     }
 
-    # 5. DỮ LIỆU TỶ TRỌNG PHÒNG CHIẾU (Doughnut Chart)
     tickets_by_room = tickets_qs.values('showtime__room__name').annotate(count=Count('id')).order_by('-count')
     pie_chart_data = {
         'labels': [item['showtime__room__name'] for item in tickets_by_room],
-        'data': [item['count'] for item in tickets_by_room]
+        'data': [item['count'] for item in tickets_by_room],
     }
 
-    # 6. DỮ LIỆU HEATMAP (Khung giờ & Thứ trong tuần)
     heatmap_data = tickets_qs.annotate(
         weekday=ExtractWeekDay('booked_at'),
         hour=ExtractHour('booked_at')
     ).values('weekday', 'hour').annotate(count=Count('id'))
 
-    heatmap_matrix = [[0]*16 for _ in range(7)]
+    heatmap_matrix = [[0] * 16 for _ in range(7)]
     max_val = 0
-    
     for item in heatmap_data:
-        # Convert Django WeekDay (1=Sun) -> Python index (6=Sun)
         wd_idx = 6 if item['weekday'] == 1 else item['weekday'] - 2
         hour = item['hour']
         if 8 <= hour <= 23:
             h_idx = hour - 8
             count = item['count']
             heatmap_matrix[wd_idx][h_idx] = count
-            if count > max_val: max_val = count
+            if count > max_val:
+                max_val = count
 
     return render(request, 'cinema_app/manage/analytics.html', {
         'kpis': kpis,
@@ -1015,74 +825,77 @@ def manage_analytics(request):
         'pie_chart': json.dumps(pie_chart_data),
         'heatmap': heatmap_matrix,
         'max_val': max_val,
-        'hours_label': range(8, 24)
+        'hours_label': range(8, 24),
     })
 
-# --- Các hàm Quản lý CRUD (Phim, Phòng, Suất chiếu, User) ---
-# Logic chung: Sử dụng ModelForm để validate và lưu dữ liệu.
+
+# --- Qu?n l? CRUD (phim, ph?ng, su?t chi?u, khuy?n m?i, v?, ng??i d?ng) ---
 
 @user_passes_test(is_staff_user)
 def manage_movies(request):
-    """Quản lý danh sách phim."""
     form = MovieForm()
     movies = Movie.objects.all().order_by('-release_date')
     return render(request, 'cinema_app/manage/manage_movies.html', {'movies': movies, 'form': form})
 
+
 @user_passes_test(is_staff_user)
 def manage_movie_create(request):
-    """Thêm phim mới."""
     if request.method == 'POST':
         form = MovieForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã thêm phim.')
+            messages.success(request, '?? th?m phim.')
             return redirect('manage_movies')
     else:
         form = MovieForm()
     movies = Movie.objects.all().order_by('-release_date')
     return render(request, 'cinema_app/manage/manage_movies.html', {'form': form, 'create': True, 'movies': movies})
 
+
 @user_passes_test(is_staff_user)
 def manage_movie_edit(request, pk):
-    """Sửa thông tin phim."""
     movie = get_object_or_404(Movie, pk=pk)
     if request.method == 'POST':
         form = MovieForm(request.POST, request.FILES, instance=movie)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã cập nhật phim.')
+            messages.success(request, '?? c?p nh?t phim.')
             return redirect('manage_movies')
     else:
         form = MovieForm(instance=movie)
     movies = Movie.objects.all().order_by('-release_date')
     return render(request, 'cinema_app/manage/manage_movies.html', {'form': form, 'edit': True, 'movies': movies, 'editing': movie})
 
+
 @user_passes_test(is_staff_user)
 def manage_movie_delete(request, pk):
-    """Xóa phim."""
     movie = get_object_or_404(Movie, pk=pk)
     movie.delete()
-    messages.info(request, 'Đã xóa phim.')
+    messages.info(request, '?? x?a phim.')
     return redirect('manage_movies')
 
-# (Tương tự cho Manage Rooms, Showtimes, Promotions...)
+
 @user_passes_test(is_staff_user)
 def manage_rooms(request):
     form = RoomForm()
     rooms = CinemaRoom.objects.all().order_by('name')
     return render(request, 'cinema_app/manage/manage_rooms.html', {'rooms': rooms, 'form': form})
+
+
 @user_passes_test(is_staff_user)
 def manage_room_create(request):
     if request.method == 'POST':
         form = RoomForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã thêm phòng chiếu.')
+            messages.success(request, '?? th?m ph?ng chi?u.')
             return redirect('manage_rooms')
     else:
         form = RoomForm()
     rooms = CinemaRoom.objects.all().order_by('name')
     return render(request, 'cinema_app/manage/manage_rooms.html', {'form': form, 'create': True, 'rooms': rooms})
+
+
 @user_passes_test(is_staff_user)
 def manage_room_edit(request, pk):
     room = get_object_or_404(CinemaRoom, pk=pk)
@@ -1090,35 +903,43 @@ def manage_room_edit(request, pk):
         form = RoomForm(request.POST, instance=room)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã cập nhật phòng chiếu.')
+            messages.success(request, '?? c?p nh?t ph?ng chi?u.')
             return redirect('manage_rooms')
     else:
         form = RoomForm(instance=room)
     rooms = CinemaRoom.objects.all().order_by('name')
     return render(request, 'cinema_app/manage/manage_rooms.html', {'form': form, 'edit': True, 'rooms': rooms, 'editing': room})
+
+
 @user_passes_test(is_staff_user)
 def manage_room_delete(request, pk):
     room = get_object_or_404(CinemaRoom, pk=pk)
     room.delete()
-    messages.info(request, 'Đã xóa phòng chiếu.')
+    messages.info(request, '?? x?a ph?ng chi?u.')
     return redirect('manage_rooms')
+
+
 @user_passes_test(is_staff_user)
 def manage_showtimes(request):
     form = ShowTimeForm()
     sts = ShowTime.objects.select_related('movie', 'room').all().order_by('-start_time')
     return render(request, 'cinema_app/manage/manage_showtimes.html', {'showtimes': sts, 'form': form})
+
+
 @user_passes_test(is_staff_user)
 def manage_showtime_create(request):
     if request.method == 'POST':
         form = ShowTimeForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã thêm suất chiếu.')
+            messages.success(request, '?? th?m su?t chi?u.')
             return redirect('manage_showtimes')
     else:
         form = ShowTimeForm()
     sts = ShowTime.objects.select_related('movie', 'room').all().order_by('-start_time')
     return render(request, 'cinema_app/manage/manage_showtimes.html', {'form': form, 'create': True, 'showtimes': sts})
+
+
 @user_passes_test(is_staff_user)
 def manage_showtime_edit(request, pk):
     st = get_object_or_404(ShowTime, pk=pk)
@@ -1126,35 +947,43 @@ def manage_showtime_edit(request, pk):
         form = ShowTimeForm(request.POST, instance=st)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã cập nhật suất chiếu.')
+            messages.success(request, '?? c?p nh?t su?t chi?u.')
             return redirect('manage_showtimes')
     else:
         form = ShowTimeForm(instance=st)
     sts = ShowTime.objects.select_related('movie', 'room').all().order_by('-start_time')
     return render(request, 'cinema_app/manage/manage_showtimes.html', {'form': form, 'edit': True, 'showtimes': sts, 'editing': st})
+
+
 @user_passes_test(is_staff_user)
 def manage_showtime_delete(request, pk):
     st = get_object_or_404(ShowTime, pk=pk)
     st.delete()
-    messages.info(request, 'Đã xóa suất chiếu.')
+    messages.info(request, '?? x?a su?t chi?u.')
     return redirect('manage_showtimes')
+
+
 @user_passes_test(is_staff_user)
 def manage_promotions(request):
     form = PromotionForm()
     promotions = Promotion.objects.all().order_by('-valid_until')
     return render(request, 'cinema_app/manage/manage_promotions.html', {'promotions': promotions, 'form': form})
+
+
 @user_passes_test(is_staff_user)
 def manage_promotion_create(request):
     if request.method == 'POST':
         form = PromotionForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã thêm mã khuyến mãi.')
+            messages.success(request, '?? th?m m? khuy?n m?i.')
             return redirect('manage_promotions')
     else:
         form = PromotionForm()
     promotions = Promotion.objects.all().order_by('-valid_until')
     return render(request, 'cinema_app/manage/manage_promotions.html', {'form': form, 'create': True, 'promotions': promotions})
+
+
 @user_passes_test(is_staff_user)
 def manage_promotion_edit(request, pk):
     promo = get_object_or_404(Promotion, pk=pk)
@@ -1162,18 +991,22 @@ def manage_promotion_edit(request, pk):
         form = PromotionForm(request.POST, instance=promo)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Đã cập nhật khuyến mãi.')
+            messages.success(request, '?? c?p nh?t khuy?n m?i.')
             return redirect('manage_promotions')
     else:
         form = PromotionForm(instance=promo)
     promotions = Promotion.objects.all().order_by('-valid_until')
     return render(request, 'cinema_app/manage/manage_promotions.html', {'form': form, 'edit': True, 'promotions': promotions, 'editing': promo})
+
+
 @user_passes_test(is_staff_user)
 def manage_promotion_delete(request, pk):
     promo = get_object_or_404(Promotion, pk=pk)
     promo.delete()
-    messages.info(request, 'Đã xóa khuyến mãi.')
+    messages.info(request, '?? x?a khuy?n m?i.')
     return redirect('manage_promotions')
+
+
 @user_passes_test(is_staff_user)
 def manage_reports(request):
     start = request.GET.get('start')
@@ -1188,17 +1021,28 @@ def manage_reports(request):
     by_movie = qs.values('showtime__movie__title').annotate(tickets=Count('id'), money=Sum('price_paid')).order_by('-money')
     return render(request, 'cinema_app/manage/manage_reports.html', {'revenue': revenue, 'count': count, 'by_movie': by_movie, 'start': start, 'end': end})
 
+
 @user_passes_test(is_staff_user)
 def manage_tickets(request):
-    """
-    Quản lý vé (staff): lọc theo trạng thái thanh toán, ngày đặt, từ khóa.
-    """
+    # Làm sạch vé chưa thanh toán quá hạn để danh sách gọn nhẹ hơn
+    cleanup_stale_unpaid_tickets()
+
     status = request.GET.get('status', '')
     q = request.GET.get('q', '').strip()
     start = request.GET.get('start')
     end = request.GET.get('end')
+    query_params = request.GET.copy()
+    if 'page' in query_params:
+        query_params.pop('page')
+    base_query = query_params.urlencode()
 
-    tickets_qs = Ticket.objects.select_related('user', 'showtime__movie', 'showtime__room').order_by('-booked_at')
+    tickets_qs = Ticket.objects.select_related('user', 'showtime__movie', 'showtime__room')\
+        .only(
+            'booking_code', 'user__username', 'user__email',
+            'showtime__movie__title', 'showtime__start_time', 'showtime__room__name',
+            'seat_row', 'seat_number', 'price_paid', 'is_paid', 'booked_at'
+        )\
+        .order_by('-booked_at')
 
     if status == 'paid':
         tickets_qs = tickets_qs.filter(is_paid=True)
@@ -1224,8 +1068,12 @@ def manage_tickets(request):
         revenue=Sum('price_paid', filter=Q(is_paid=True))
     )
 
+    paginator = Paginator(tickets_qs, 50)
+    tickets_page = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'cinema_app/manage/manage_tickets.html', {
-        'tickets': tickets_qs,
+        'tickets': tickets_page,
+        'base_query': base_query,
         'status': status,
         'q': q,
         'start': start,
@@ -1233,27 +1081,21 @@ def manage_tickets(request):
         'stats': stats
     })
 
+
 @user_passes_test(is_staff_user)
 def manage_users(request):
-    """
-    QUẢN LÝ NGƯỜI DÙNG (ADMIN)
-    - Chức năng: Xem danh sách, thêm, sửa, xóa người dùng.
-    - Logic: Lấy danh sách user kèm theo Profile (select_related).
-    """
     form = ManageUserForm()
     users = User.objects.select_related('profile').all().order_by('-date_joined')
     return render(request, 'cinema_app/manage/manage_users.html', {'users': users, 'form': form})
 
+
 @user_passes_test(is_staff_user)
 def manage_user_create(request):
-    """Thêm người dùng mới (bao gồm cả nhân viên) từ trang quản trị."""
     if request.method == 'POST':
         form = ManageUserForm(request.POST)
         if form.is_valid():
             try:
-                # Sử dụng Transaction để đảm bảo User và Profile cùng được tạo
                 with transaction.atomic():
-                    # 1. Tạo User
                     user = User.objects.create_user(
                         username=form.cleaned_data['username'],
                         email=form.cleaned_data['email'],
@@ -1264,24 +1106,23 @@ def manage_user_create(request):
                         user.is_staff = True
                     user.save()
 
-                    # 2. Tạo Profile
                     Profile.objects.create(
                         user=user,
                         full_name=form.cleaned_data['full_name'],
                         phone=form.cleaned_data['phone'],
                         role=form.cleaned_data['role']
                     )
-                    messages.success(request, f'Đã thêm người dùng {user.username}.')
+                    messages.success(request, f'?? th?m ng??i d?ng {user.username}.')
                     return redirect('manage_users')
             except IntegrityError:
-                messages.error(request, 'Tên tài khoản đã tồn tại.')
+                messages.error(request, 'T?n t?i kho?n ?? t?n t?i.')
         else:
-             messages.error(request, 'Vui lòng kiểm tra lại thông tin.')
+            messages.error(request, 'Vui l?ng ki?m tra l?i th?ng tin.')
     return redirect('manage_users')
+
 
 @user_passes_test(is_staff_user)
 def manage_user_edit(request, pk):
-    """Sửa thông tin người dùng."""
     user = get_object_or_404(User, pk=pk)
     try:
         profile = user.profile
@@ -1295,12 +1136,9 @@ def manage_user_edit(request, pk):
             new_pass = form.cleaned_data.get('password')
             if new_pass:
                 u.set_password(new_pass)
-            
+
             role = form.cleaned_data['role']
-            if role == 'STAFF':
-                u.is_staff = True
-            else:
-                u.is_staff = False
+            u.is_staff = role == 'STAFF'
             u.save()
 
             profile.full_name = form.cleaned_data['full_name']
@@ -1308,96 +1146,23 @@ def manage_user_edit(request, pk):
             profile.role = role
             profile.save()
 
-            messages.success(request, 'Đã cập nhật thông tin người dùng.')
+            messages.success(request, '?? c?p nh?t th?ng tin ng??i d?ng.')
             return redirect('manage_users')
     else:
         form = ManageUserForm(instance=user, profile_instance=profile)
-    
+
     users = User.objects.select_related('profile').all().order_by('-date_joined')
     return render(request, 'cinema_app/manage/manage_users.html', {'form': form, 'edit': True, 'users': users, 'editing': user})
 
+
 @user_passes_test(is_staff_user)
 def manage_user_delete(request, pk):
-    """Xóa người dùng (Không cho phép xóa Admin tối cao)."""
     user = get_object_or_404(User, pk=pk)
     if user.is_superuser:
-        messages.error(request, 'Không thể xóa Superuser (Admin tối cao).')
+        messages.error(request, 'Kh?ng th? x?a Superuser.')
     elif user == request.user:
-        messages.error(request, 'Bạn không thể tự xóa chính mình.')
+        messages.error(request, 'B?n kh?ng th? t? x?a ch?nh m?nh.')
     else:
         user.delete()
-        messages.success(request, 'Đã xóa người dùng.')
+        messages.success(request, '?? x?a ng??i d?ng.')
     return redirect('manage_users')
-
-# ==============================================================================
-# PHẦN 7.1: STAFF MANAGEMENT - FOOD (QUẢN LÝ ĐỒ ĂN)
-# ==============================================================================
-
-@user_passes_test(is_staff_user)
-def manage_foods(request):
-    """Quản lý danh sách đồ ăn."""
-    form = FoodManageForm()
-    foods = Food.objects.all().order_by('category', 'name')
-    return render(request, 'cinema_app/manage/manage_foods.html', {'foods': foods, 'form': form})
-
-@user_passes_test(is_staff_user)
-def manage_food_create(request):
-    """Thêm đồ ăn mới."""
-    if request.method == 'POST':
-        form = FoodManageForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Đã thêm đồ ăn.')
-            return redirect('manage_foods')
-    else:
-        form = FoodManageForm()
-    foods = Food.objects.all().order_by('category', 'name')
-    return render(request, 'cinema_app/manage/manage_foods.html', {'form': form, 'create': True, 'foods': foods})
-
-@user_passes_test(is_staff_user)
-def manage_food_edit(request, pk):
-    """Sửa thông tin đồ ăn."""
-    food = get_object_or_404(Food, pk=pk)
-    if request.method == 'POST':
-        form = FoodManageForm(request.POST, request.FILES, instance=food)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Đã cập nhật đồ ăn.')
-            return redirect('manage_foods')
-    else:
-        form = FoodManageForm(instance=food)
-    foods = Food.objects.all().order_by('category', 'name')
-    return render(request, 'cinema_app/manage/manage_foods.html', {'form': form, 'edit': True, 'foods': foods, 'editing': food})
-
-@user_passes_test(is_staff_user)
-def manage_food_delete(request, pk):
-    """Xóa đồ ăn."""
-    food = get_object_or_404(Food, pk=pk)
-    food.delete()
-    messages.info(request, 'Đã xóa đồ ăn.')
-    return redirect('manage_foods')
-
-@user_passes_test(is_staff_user)
-def manage_food_orders(request):
-    """Quản lý các đơn đặt đồ ăn."""
-    orders = FoodOrder.objects.select_related('user').prefetch_related('items__food').order_by('-ordered_at')
-    
-    processed_orders = []
-    for order in orders:
-        items = []
-        for item in order.items.all():
-            items.append({
-                'name': item.food.name if item.food else 'N/A',
-                'quantity': item.quantity,
-                'subtotal': item.subtotal
-            })
-        
-        processed_orders.append({
-            'order': order,
-            'items': items,
-            'item_count': len(items)
-        })
-    
-    return render(request, 'cinema_app/manage/manage_food_orders.html', {
-        'orders': processed_orders
-    })
